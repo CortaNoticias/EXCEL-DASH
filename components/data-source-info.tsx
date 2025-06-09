@@ -3,7 +3,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { ExternalLink, CheckCircle, AlertTriangle } from "lucide-react"
+import { ExternalLink, CheckCircle, Database, Github } from "lucide-react"
 import { getDataSourceInfo } from "@/lib/json-processor"
 
 interface DataSourceInfoProps {
@@ -11,7 +11,6 @@ interface DataSourceInfoProps {
   isUsingMockData?: boolean
 }
 
-// Actualizar la información de la fuente de datos para mostrar el estado real
 export default function DataSourceInfo({ loadedYears, isUsingMockData = false }: DataSourceInfoProps) {
   const sourceInfo = getDataSourceInfo()
 
@@ -21,52 +20,74 @@ export default function DataSourceInfo({ loadedYears, isUsingMockData = false }:
         <CardTitle className="flex items-center gap-2">
           {isUsingMockData ? (
             <>
-              <AlertTriangle className="h-5 w-5 text-amber-600" />
-              Usando Datos de Ejemplo
+              <Database className="h-5 w-5 text-blue-600" />
+              Datos de Demostración Cargados
             </>
           ) : (
             <>
-              <CheckCircle className="h-5 w-5 text-green-600" />✅ Datos Oficiales de JUNAEB Cargados desde GitHub
+              <CheckCircle className="h-5 w-5 text-green-600" />
+              Datos Oficiales de JUNAEB desde GitHub
             </>
           )}
         </CardTitle>
       </CardHeader>
       <CardContent>
         {isUsingMockData ? (
-          <Alert className="border-amber-200 bg-amber-50">
-            <AlertTriangle className="h-4 w-4 text-amber-600" />
+          <Alert className="border-blue-200 bg-blue-50">
+            <Database className="h-4 w-4 text-blue-600" />
             <AlertDescription>
-              <div className="space-y-3">
+              <div className="space-y-4">
                 <div>
-                  <p className="font-medium text-amber-800 mb-1">Se están usando datos de ejemplo realistas</p>
-                  <p className="text-sm text-amber-700">
-                    No se pudieron cargar los archivos JSON desde GitHub. Los datos mostrados son representativos del
-                    tipo de análisis que se puede realizar con datos reales.
+                  <p className="font-medium text-blue-800 mb-2">🎭 Usando datos de demostración realistas</p>
+                  <p className="text-sm text-blue-700">
+                    Los archivos JSON no están disponibles en GitHub o hay problemas de conectividad. Se han generado
+                    datos de ejemplo que replican fielmente la estructura y patrones de datos reales de JUNAEB.
                   </p>
                 </div>
 
-                <div className="bg-white p-3 rounded border border-amber-200">
-                  <p className="text-sm font-medium text-amber-800 mb-2">Características de los datos de ejemplo:</p>
-                  <ul className="text-xs text-amber-700 space-y-1">
-                    <li>• {loadedYears.length} años de datos (2020-2023)</li>
-                    <li>• Empresas y montos realistas</li>
-                    <li>• Estados y tipos de multa variados</li>
-                    <li>• Distribución temporal coherente</li>
-                    <li>• Todas las funcionalidades del dashboard disponibles</li>
-                  </ul>
+                <div className="bg-white p-4 rounded border border-blue-200">
+                  <p className="text-sm font-medium text-blue-800 mb-3">
+                    📊 Características de los datos de demostración:
+                  </p>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs text-blue-700">
+                    <div>• {loadedYears.length} años completos (2020-2023)</div>
+                    <div>• 45-80 registros por año</div>
+                    <div>• 15 empresas realistas</div>
+                    <div>• 8 estados diferentes</div>
+                    <div>• 10 tipos de multas</div>
+                    <div>• 15 regiones de Chile</div>
+                    <div>• Montos entre $300K - $25M</div>
+                    <div>• Fechas distribuidas por año</div>
+                    <div>• Porcentajes de ejecución variables</div>
+                    <div>• Campos adicionales (RUT, observaciones)</div>
+                    <div>• Datos específicos PAE/PAP</div>
+                    <div>• Todas las funcionalidades disponibles</div>
+                  </div>
+                </div>
+
+                <div className="bg-amber-50 p-3 rounded border border-amber-200">
+                  <p className="text-sm text-amber-800 mb-2">
+                    <strong>💡 Nota importante:</strong>
+                  </p>
+                  <p className="text-xs text-amber-700">
+                    Estos datos son completamente ficticios y generados algorítmicamente. No representan información
+                    real de JUNAEB, empresas o multas reales. Su propósito es únicamente demostrar las capacidades del
+                    dashboard.
+                  </p>
                 </div>
 
                 <div>
-                  <p className="text-sm text-amber-700">
-                    <strong>Para usar datos reales:</strong> Verifica que los archivos JSON estén disponibles en:
+                  <p className="text-sm text-blue-700 mb-2">
+                    <strong>🔗 Para acceder a datos reales:</strong>
                   </p>
                   <a
                     href={sourceInfo.baseUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1 text-amber-700 hover:text-amber-900 text-sm underline"
+                    className="inline-flex items-center gap-1 text-blue-700 hover:text-blue-900 text-sm underline"
                   >
-                    CortaNoticias/EXCEL-DASH/csv
+                    <Github className="h-3 w-3" />
+                    Verificar repositorio CortaNoticias/EXCEL-DASH
                     <ExternalLink className="h-3 w-3" />
                   </a>
                 </div>
@@ -78,32 +99,23 @@ export default function DataSourceInfo({ loadedYears, isUsingMockData = false }:
             <div className="bg-green-50 p-4 rounded-lg border border-green-200">
               <div className="flex items-center gap-2 mb-2">
                 <CheckCircle className="h-4 w-4 text-green-600" />
-                <span className="font-medium text-green-800">
-                  🎉 Datos oficiales cargados exitosamente desde GitHub
-                </span>
+                <span className="font-medium text-green-800">✅ Datos oficiales cargados exitosamente</span>
               </div>
               <p className="text-sm text-green-700">
-                Se han cargado los datos reales de multas JUNAEB desde el repositorio oficial CortaNoticias/EXCEL-DASH.
-                Los archivos JSON están disponibles y funcionando correctamente.
+                Se han cargado los datos reales de multas JUNAEB desde el repositorio oficial.
               </p>
             </div>
 
-            <div className="bg-blue-50 p-3 rounded border border-blue-200">
-              <div className="text-sm text-blue-800">
-                <strong>📊 Repositorio verificado:</strong> Los archivos JSON están disponibles en GitHub y se están
-                cargando correctamente.
-              </div>
-            </div>
-
             <div>
-              <p className="text-sm text-muted-foreground mb-2">🔗 Fuente de datos oficial:</p>
+              <p className="text-sm text-muted-foreground mb-2">🔗 Fuente de datos:</p>
               <a
                 href={sourceInfo.baseUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-1 text-blue-600 hover:text-blue-800 text-sm font-medium"
+                className="inline-flex items-center gap-1 text-blue-600 hover:text-blue-800 text-sm"
               >
-                📁 CortaNoticias/EXCEL-DASH/csv
+                <Github className="h-3 w-3" />
+                CortaNoticias/EXCEL-DASH/csv
                 <ExternalLink className="h-3 w-3" />
               </a>
             </div>
@@ -126,11 +138,6 @@ export default function DataSourceInfo({ loadedYears, isUsingMockData = false }:
                   )
                 })}
               </div>
-            </div>
-
-            <div className="text-xs text-muted-foreground">
-              <p>🔄 Los datos se cargan directamente desde GitHub en tiempo real</p>
-              <p>📅 Última verificación: {new Date().toLocaleDateString()}</p>
             </div>
           </div>
         )}
