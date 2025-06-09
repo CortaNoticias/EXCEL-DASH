@@ -2,42 +2,69 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Loader2, AlertCircle } from "lucide-react"
+import { Loader2, AlertCircle, FileSpreadsheet } from "lucide-react"
 import Dashboard from "@/components/dashboard"
 import { processExcelData } from "@/lib/excel-processor"
 import SheetOverview from "@/components/sheet-overview"
 import ExecutiveSummary from "@/components/executive-summary"
+import MockDataLoader from "@/components/mock-data-loader"
+
+// URL correcta proporcionada por el usuario
+const JUNAEB_URL =
+  "https://github.com/CortaNoticias/EXCEL-DASH/raw/refs/heads/main/Multas%20Junaeb%20-%20Base%20de%20datos%20(TPA).xlsx"
 
 export default function Home() {
-  // Cambiar la URL por defecto a una que funcione mejor
-  const [url, setUrl] = useState("")
+  const [url, setUrl] = useState(JUNAEB_URL)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [data, setData] = useState<any>(null)
   const [activeSheet, setActiveSheet] = useState<string>("")
   const [sheetNames, setSheetNames] = useState<string[]>([])
 
+  // Cargar automáticamente al iniciar
+  useEffect(() => {
+    handleLoadJunaeb()
+  }, [])
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    await loadData(url)
+  }
+
+  const handleLoadJunaeb = async () => {
+    setUrl(JUNAEB_URL)
+    await loadData(JUNAEB_URL)
+  }
+
+  const loadData = async (urlToLoad: string) => {
     setIsLoading(true)
     setError(null)
 
     try {
-      const result = await processExcelData(url)
+      console.log("Intentando cargar datos desde:", urlToLoad)
+      const result = await processExcelData(urlToLoad)
       setData(result.data)
       setSheetNames(result.sheetNames)
       setActiveSheet(result.sheetNames[0])
       setIsLoading(false)
     } catch (err) {
+      console.error("Error al cargar datos:", err)
       setError(err instanceof Error ? err.message : "Error al procesar el archivo Excel")
       setIsLoading(false)
     }
+  }
+
+  const handleLoadMockData = (mockData: any) => {
+    setData(mockData.data)
+    setSheetNames(mockData.sheetNames)
+    setActiveSheet(mockData.sheetNames[0])
+    setError(null)
   }
 
   return (
@@ -53,7 +80,7 @@ export default function Home() {
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="flex flex-col md:flex-row gap-4">
-            <div className="flex flex-col md:flex-row gap-4">
+            <div className="flex flex-col md:flex-row gap-4 w-full">
               <Input
                 type="text"
                 placeholder="URL del archivo Excel en GitHub (raw)"
@@ -71,15 +98,8 @@ export default function Home() {
                   "Cargar Datos"
                 )}
               </Button>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => {
-                  const correctUrl =
-                    "https://raw.githubusercontent.com/CortaNoticias/EXCEL-DASH/main/Multas%20Junaeb%20-%20Base%20de%20datos%20(TPA).xlsx"
-                  setUrl(correctUrl)
-                }}
-              >
+              <Button type="button" variant="outline" onClick={handleLoadJunaeb} disabled={isLoading}>
+                <FileSpreadsheet className="mr-2 h-4 w-4" />
                 Cargar JUNAEB
               </Button>
             </div>
@@ -98,13 +118,25 @@ export default function Home() {
                   </p>
                   <ul className="text-sm list-disc list-inside space-y-1">
                     <li>Verifica que el archivo Excel esté disponible públicamente en GitHub</li>
-                    <li>Asegúrate de usar la URL "raw" del archivo</li>
-                    <li>Comprueba que el archivo no esté corrupto</li>
-                    <li>Intenta usar el botón "Cargar JUNAEB" para la URL correcta</li>
+                    <li>Asegúrate de usar la URL correcta para descargar el archivo</li>
+                    <li>Intenta usar el botón "Cargar JUNAEB" para la URL predefinida</li>
+                    <li>Si continúas teniendo problemas, puedes usar datos de ejemplo para probar la aplicación</li>
                   </ul>
+
+                  <MockDataLoader onLoad={handleLoadMockData} />
                 </div>
               </AlertDescription>
             </Alert>
+          )}
+
+          {isLoading && (
+            <div className="mt-4 p-6 flex flex-col items-center justify-center">
+              <Loader2 className="h-8 w-8 animate-spin mb-2" />
+              <p className="text-center">Cargando y procesando el archivo Excel...</p>
+              <p className="text-sm text-muted-foreground mt-1">
+                Esto puede tomar unos momentos dependiendo del tamaño del archivo
+              </p>
+            </div>
           )}
         </CardContent>
       </Card>
