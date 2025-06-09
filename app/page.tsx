@@ -61,7 +61,7 @@ export default function Home() {
         console.log("✅ Usando datos reales de GitHub")
       } else {
         setConnectionStatus("failed")
-        console.log("⚠️ Usando datos de fallback")
+        console.log("⚠️ Usando datos de demostración")
       }
 
       setIsLoading(false)
@@ -118,7 +118,7 @@ export default function Home() {
           {connectionStatus === "checking" && (
             <div className="flex items-center gap-2 text-blue-600 text-sm">
               <Loader2 className="h-3 w-3 animate-spin" />
-              <span>Conectando a GitHub...</span>
+              <span>Explorando repositorio...</span>
             </div>
           )}
           {connectionStatus === "connected" && (
@@ -130,7 +130,7 @@ export default function Home() {
           {connectionStatus === "failed" && (
             <div className="flex items-center gap-2 text-amber-600 text-sm">
               <WifiOff className="h-3 w-3" />
-              <span>{isUsingRealData ? "Datos parciales" : "Datos de demostración"}</span>
+              <span>Datos de demostración</span>
             </div>
           )}
         </div>
@@ -202,7 +202,7 @@ export default function Home() {
           <AlertCircle className="h-4 w-4" />
           <AlertDescription>
             <p className="font-medium">Error de conexión con GitHub</p>
-            <p className="text-sm">Usando datos de fallback. Funcionalidad completa disponible.</p>
+            <p className="text-sm">Usando datos de demostración. Funcionalidad completa disponible.</p>
           </AlertDescription>
         </Alert>
       )}
@@ -213,8 +213,8 @@ export default function Home() {
           <CardContent className="p-6 flex items-center justify-center gap-3">
             <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
             <div>
-              <p className="font-medium">Cargando datos de JUNAEB desde GitHub...</p>
-              <p className="text-sm text-muted-foreground">Verificando archivos JSON oficiales</p>
+              <p className="font-medium">Explorando repositorio GitHub...</p>
+              <p className="text-sm text-muted-foreground">Buscando archivos disponibles</p>
             </div>
           </CardContent>
         </Card>
