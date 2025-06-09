@@ -13,6 +13,9 @@ import {
   ResponsiveContainer,
   BarChart,
   Bar,
+  PieChart,
+  Pie,
+  Cell,
 } from "recharts"
 import { formatCurrency } from "@/lib/utils"
 
@@ -187,6 +190,45 @@ export default function TemporalAnalysis({ data, sheetNames }: TemporalAnalysisP
                   <div>
                     % Ejecución: <span className="font-medium">{yearStats.porcentajeEjecucion.toFixed(2)}%</span>
                   </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+      <Card>
+        <CardHeader>
+          <CardTitle>Distribución de Ejecución por Año</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            {temporalData.map((yearData) => (
+              <div key={yearData.year} className="text-center">
+                <h4 className="font-medium mb-2">Año {yearData.year}</h4>
+                <div className="h-[200px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={[
+                          { name: "Ejecutado", value: yearData.totalEjecutado },
+                          { name: "Pendiente", value: yearData.diferencia },
+                        ]}
+                        cx="50%"
+                        cy="50%"
+                        outerRadius={60}
+                        fill="#8884d8"
+                        dataKey="value"
+                        label={({ percent }) => `${(percent * 100).toFixed(0)}%`}
+                      >
+                        <Cell fill="#00C49F" />
+                        <Cell fill="#FF8042" />
+                      </Pie>
+                      <Tooltip formatter={(value) => formatCurrency(value as number)} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+                <div className="text-xs text-muted-foreground mt-1">
+                  {yearData.porcentajeEjecucion.toFixed(1)}% ejecutado
                 </div>
               </div>
             ))}

@@ -20,6 +20,7 @@ import {
 } from "recharts"
 import { formatCurrency } from "@/lib/utils"
 import JunaebStats from "@/components/junaeb-stats"
+import PieChartSummary from "@/components/pie-chart-summary"
 
 interface DashboardProps {
   data: any[]
@@ -131,7 +132,69 @@ export default function Dashboard({ data, sheetName }: DashboardProps) {
     ]
   }, [summaryStats])
 
+  const estadosPieData = useMemo(() => {
+    const estadoCount = processedData.reduce(
+      (acc, item) => {
+        const estado = item.estado || "No especificado"
+        acc[estado] = (acc[estado] || 0) + 1
+        return acc
+      },
+      {} as Record<string, number>,
+    )
+
+    return Object.entries(estadoCount)
+      .map(([name, count]) => ({ name, count }))
+      .sort((a, b) => b.count - a.count)
+  }, [processedData])
+
+  const tiposPieData = useMemo(() => {
+    const tipoCount = processedData.reduce(
+      (acc, item) => {
+        const tipo = item.tipo || "No especificado"
+        acc[tipo] = (acc[tipo] || 0) + 1
+        return acc
+      },
+      {} as Record<string, number>,
+    )
+
+    return Object.entries(tipoCount)
+      .map(([name, count]) => ({ name: truncateText(name, 20), count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 6) // Top 6 tipos
+  }, [processedData])
+
+  const empresasPieData = useMemo(() => {
+    const empresaMontos = processedData.reduce(
+      (acc, item) => {
+        const empresa = item.empresa || "No especificada"
+        acc[empresa] = (acc[empresa] || 0) + item.montoNotificado
+        return acc
+      },
+      {} as Record<string, number>,
+    )
+
+    return Object.entries(empresaMontos)
+      .map(([name, monto]) => ({ name, monto }))
+      .sort((a, b) => b.monto - a.monto)
+      .slice(0, 5) // Top 5 empresas
+  }, [processedData])
+
+  const ejecucionPieData = useMemo(() => {
+    const totalNotificado = summaryStats.totalNotificado
+    const totalEjecutado = summaryStats.totalEjecutado
+    const diferencia = totalNotificado - totalEjecutado
+
+    return [
+      { name: "Monto Ejecutado", value: totalEjecutado },
+      { name: "Pendiente de Ejecución", value: diferencia },
+    ].filter((item) => item.value > 0)
+  }, [summaryStats])
+
   const COLORS = ["#0088FE", "#FF8042"]
+  const ESTADO_COLORS = ["#0088FE", "#00C49F", "#FFBB28", "#FF8042", "#8884D8", "#82CA9D"]
+  const TIPO_COLORS = ["#FF6B6B", "#4ECDC4", "#45B7D1", "#96CEB4", "#FFEAA7", "#DDA0DD"]
+  const EMPRESA_COLORS = ["#FF9F43", "#10AC84", "#EE5A24", "#0984E3", "#6C5CE7", "#A29BFE"]
+  const EJECUCION_COLORS = ["#00B894", "#FDCB6E", "#E17055", "#74B9FF"]
 
   return (
     <div className="space-y-6">
@@ -190,6 +253,7 @@ export default function Dashboard({ data, sheetName }: DashboardProps) {
               <TabsTrigger value="comparacion">Comparación de Montos</TabsTrigger>
               <TabsTrigger value="diferencias">Diferencias</TabsTrigger>
               <TabsTrigger value="distribucion">Distribución</TabsTrigger>
+              <TabsTrigger value="tortas">Gráficos de Torta</TabsTrigger>
               <TabsTrigger value="tabla">Tabla Detallada</TabsTrigger>
             </TabsList>
 
@@ -249,6 +313,134 @@ export default function Dashboard({ data, sheetName }: DashboardProps) {
               </div>
             </TabsContent>
 
+            <TabsContent value="tortas" className="space-y-6">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Distribución por Estado */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Distribución por Estado</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="h-[300px]">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <PieChart>
+                          <Pie
+                            data={estadosPieData}
+                            cx="50%"
+                            cy="50%"
+                            labelLine={false}
+                            outerRadius={100}
+                            fill="#8884d8"
+                            dataKey="count"
+                            label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(1)}%`}
+                          >
+                            {estadosPieData.map((entry, index) => (
+                              <Cell key={`cell-${index}`} fill={ESTADO_COLORS[index % ESTADO_COLORS.length]} />
+                            ))}
+                          </Pie>
+                          <Tooltip formatter={(value, name) => [value, "Cantidad"]} />
+                          <Legend />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Distribución por Tipo de Multa */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Distribución por Tipo de Multa</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="h-[300px]">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <PieChart>
+                          <Pie
+                            data={tiposPieData}
+                            cx="50%"
+                            cy="50%"
+                            labelLine={false}
+                            outerRadius={100}
+                            fill="#8884d8"
+                            dataKey="count"
+                            label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(1)}%`}
+                          >
+                            {tiposPieData.map((entry, index) => (
+                              <Cell key={`cell-${index}`} fill={TIPO_COLORS[index % TIPO_COLORS.length]} />
+                            ))}
+                          </Pie>
+                          <Tooltip formatter={(value, name) => [value, "Cantidad"]} />
+                          <Legend />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Distribución de Montos por Empresa (Top 5) */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Top 5 Empresas por Monto Total</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="h-[300px]">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <PieChart>
+                          <Pie
+                            data={empresasPieData}
+                            cx="50%"
+                            cy="50%"
+                            labelLine={false}
+                            outerRadius={100}
+                            fill="#8884d8"
+                            dataKey="monto"
+                            label={({ name, percent }) => `${truncateText(name, 10)}: ${(percent * 100).toFixed(1)}%`}
+                          >
+                            {empresasPieData.map((entry, index) => (
+                              <Cell key={`cell-${index}`} fill={EMPRESA_COLORS[index % EMPRESA_COLORS.length]} />
+                            ))}
+                          </Pie>
+                          <Tooltip formatter={(value) => formatCurrency(value as number)} />
+                          <Legend />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Distribución de Ejecución */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Distribución de Ejecución</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="h-[300px]">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <PieChart>
+                          <Pie
+                            data={ejecucionPieData}
+                            cx="50%"
+                            cy="50%"
+                            labelLine={false}
+                            outerRadius={100}
+                            fill="#8884d8"
+                            dataKey="value"
+                            label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(1)}%`}
+                          >
+                            {ejecucionPieData.map((entry, index) => (
+                              <Cell key={`cell-${index}`} fill={EJECUCION_COLORS[index % EJECUCION_COLORS.length]} />
+                            ))}
+                          </Pie>
+                          <Tooltip formatter={(value) => formatCurrency(value as number)} />
+                          <Legend />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            </TabsContent>
+
             <TabsContent value="tabla">
               <div className="rounded-md border">
                 <Table>
@@ -281,6 +473,7 @@ export default function Dashboard({ data, sheetName }: DashboardProps) {
         </CardContent>
       </Card>
 
+      <PieChartSummary data={processedData} title={sheetName} />
       <Card>
         <CardHeader>
           <CardTitle>Estadísticas Destacadas</CardTitle>
