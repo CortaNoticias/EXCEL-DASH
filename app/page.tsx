@@ -55,14 +55,9 @@ export default function Home() {
       setActiveSheet(result.sheetNames[0])
       setIsUsingRealData(result.usingRealData || false)
 
-      // Determinar estado de conexión basado en si usamos datos reales
-      if (result.usingRealData) {
-        setConnectionStatus("connected")
-        console.log("✅ Usando datos reales de GitHub")
-      } else {
-        setConnectionStatus("failed")
-        console.log("⚠️ Usando datos de demostración")
-      }
+      // Siempre usamos datos de demostración ahora
+      setConnectionStatus("failed")
+      console.log("⚠️ Usando datos de demostración")
 
       setIsLoading(false)
     } catch (err) {
@@ -118,7 +113,7 @@ export default function Home() {
           {connectionStatus === "checking" && (
             <div className="flex items-center gap-2 text-blue-600 text-sm">
               <Loader2 className="h-3 w-3 animate-spin" />
-              <span>Explorando repositorio...</span>
+              <span>Cargando datos...</span>
             </div>
           )}
           {connectionStatus === "connected" && (
@@ -213,8 +208,8 @@ export default function Home() {
           <CardContent className="p-6 flex items-center justify-center gap-3">
             <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
             <div>
-              <p className="font-medium">Explorando repositorio GitHub...</p>
-              <p className="text-sm text-muted-foreground">Buscando archivos disponibles</p>
+              <p className="font-medium">Cargando datos...</p>
+              <p className="text-sm text-muted-foreground">Preparando visualización</p>
             </div>
           </CardContent>
         </Card>
