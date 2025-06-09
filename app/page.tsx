@@ -33,16 +33,22 @@ export default function Home() {
     setIsUsingMockData(false)
 
     try {
-      console.log("Cargando datos para:", year === "all" ? "todos los años" : year)
+      console.log("Iniciando carga para:", year === "all" ? "todos los años" : year)
       const result = await loadJSONData(year === "all" ? undefined : year)
       setData(result.data)
       setSheetNames(result.sheetNames)
       setActiveSheet(result.sheetNames[0])
 
-      // Los datos reales no tendrán el campo 'id' que tienen los datos de ejemplo
+      // Detectar si estamos usando datos de ejemplo (tienen campo 'id' con formato específico)
       const firstYearData = result.data[result.sheetNames[0]]
-      if (firstYearData && firstYearData.length > 0 && firstYearData[0].id?.includes("-")) {
-        setIsUsingMockData(true)
+      if (firstYearData && firstYearData.length > 0) {
+        const firstRecord = firstYearData[0]
+        if (firstRecord.id && typeof firstRecord.id === "string" && firstRecord.id.includes("-")) {
+          setIsUsingMockData(true)
+          console.log("Detectados datos de ejemplo")
+        } else {
+          console.log("Detectados datos reales")
+        }
       }
 
       setIsLoading(false)
@@ -57,9 +63,7 @@ export default function Home() {
     <main className="container mx-auto py-10 px-4 md:px-6">
       <div className="text-center mb-8">
         <h1 className="text-4xl font-bold mb-4">Dashboard de Análisis de Deudas PAE-PAP</h1>
-        <p className="text-lg text-muted-foreground">
-          Análisis interactivo de multas JUNAEB • Datos oficiales 2020-2023
-        </p>
+        <p className="text-lg text-muted-foreground">Análisis interactivo de multas JUNAEB • Período 2020-2023</p>
       </div>
 
       <YearSelector onYearSelect={handleYearSelect} isLoading={isLoading} loadedYears={sheetNames} />
@@ -75,14 +79,8 @@ export default function Home() {
                 <strong>Error:</strong> {error}
               </p>
               <p className="text-sm">
-                <strong>Posibles soluciones:</strong>
+                La aplicación continuará funcionando con datos de ejemplo para demostrar todas las funcionalidades.
               </p>
-              <ul className="text-sm list-disc list-inside space-y-1">
-                <li>Verifica tu conexión a internet</li>
-                <li>Los archivos JSON deben estar disponibles públicamente en GitHub</li>
-                <li>Intenta recargar la página</li>
-                <li>Revisa la consola del navegador para más detalles</li>
-              </ul>
             </div>
           </AlertDescription>
         </Alert>
@@ -92,10 +90,8 @@ export default function Home() {
         <Card className="mb-6">
           <CardContent className="p-6 flex flex-col items-center justify-center">
             <Loader2 className="h-8 w-8 animate-spin mb-2" />
-            <p className="text-center font-medium">Cargando datos oficiales de JUNAEB...</p>
-            <p className="text-sm text-muted-foreground mt-1">
-              Procesando archivos JSON desde el repositorio de GitHub
-            </p>
+            <p className="text-center font-medium">Cargando datos de JUNAEB...</p>
+            <p className="text-sm text-muted-foreground mt-1">Intentando cargar archivos JSON desde GitHub...</p>
           </CardContent>
         </Card>
       )}
@@ -131,7 +127,9 @@ export default function Home() {
                   <Database className="h-5 w-5" />
                   Análisis Consolidado - Período 2020-2023
                 </CardTitle>
-                <CardDescription>Vista unificada de todos los datos oficiales de JUNAEB</CardDescription>
+                <CardDescription>
+                  Vista unificada de {isUsingMockData ? "datos de ejemplo" : "datos oficiales"} de JUNAEB
+                </CardDescription>
               </CardHeader>
             </Card>
 

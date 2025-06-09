@@ -3,7 +3,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Info, ExternalLink, CheckCircle } from "lucide-react"
+import { ExternalLink, CheckCircle, AlertTriangle } from "lucide-react"
 import { getDataSourceInfo } from "@/lib/json-processor"
 
 interface DataSourceInfoProps {
@@ -18,22 +18,58 @@ export default function DataSourceInfo({ loadedYears, isUsingMockData = false }:
     <Card className="mb-6">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <CheckCircle className="h-5 w-5 text-green-600" />
-          Datos Reales de JUNAEB Cargados
+          {isUsingMockData ? (
+            <>
+              <AlertTriangle className="h-5 w-5 text-amber-600" />
+              Usando Datos de Ejemplo
+            </>
+          ) : (
+            <>
+              <CheckCircle className="h-5 w-5 text-green-600" />
+              Datos Reales de JUNAEB Cargados
+            </>
+          )}
         </CardTitle>
       </CardHeader>
       <CardContent>
         {isUsingMockData ? (
-          <Alert>
-            <Info className="h-4 w-4" />
+          <Alert className="border-amber-200 bg-amber-50">
+            <AlertTriangle className="h-4 w-4 text-amber-600" />
             <AlertDescription>
-              <div className="space-y-2">
-                <p>
-                  <strong>Usando datos de ejemplo:</strong> No se pudieron cargar los archivos JSON desde GitHub.
-                </p>
-                <p className="text-sm">
-                  Para usar datos reales, verifica que los archivos estén disponibles en el repositorio.
-                </p>
+              <div className="space-y-3">
+                <div>
+                  <p className="font-medium text-amber-800 mb-1">Se están usando datos de ejemplo realistas</p>
+                  <p className="text-sm text-amber-700">
+                    No se pudieron cargar los archivos JSON desde GitHub. Los datos mostrados son representativos del
+                    tipo de análisis que se puede realizar con datos reales.
+                  </p>
+                </div>
+
+                <div className="bg-white p-3 rounded border border-amber-200">
+                  <p className="text-sm font-medium text-amber-800 mb-2">Características de los datos de ejemplo:</p>
+                  <ul className="text-xs text-amber-700 space-y-1">
+                    <li>• {loadedYears.length} años de datos (2020-2023)</li>
+                    <li>• Empresas y montos realistas</li>
+                    <li>• Estados y tipos de multa variados</li>
+                    <li>• Distribución temporal coherente</li>
+                    <li>• Todas las funcionalidades del dashboard disponibles</li>
+                  </ul>
+                </div>
+
+                <div>
+                  <p className="text-sm text-amber-700">
+                    <strong>Para usar datos reales:</strong> Verifica que los archivos JSON estén disponibles en:
+                  </p>
+                  <a
+                    href={sourceInfo.baseUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 text-amber-700 hover:text-amber-900 text-sm underline"
+                  >
+                    CortaNoticias/EXCEL-DASH/csv
+                    <ExternalLink className="h-3 w-3" />
+                  </a>
+                </div>
               </div>
             </AlertDescription>
           </Alert>
@@ -75,30 +111,6 @@ export default function DataSourceInfo({ loadedYears, isUsingMockData = false }:
                     </Badge>
                   )
                 })}
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs text-muted-foreground">
-              <div>
-                <p className="font-medium mb-1">Archivos procesados:</p>
-                <ul className="space-y-1">
-                  {sourceInfo.files
-                    .filter((file) => loadedYears.includes(file.year))
-                    .map((file) => (
-                      <li key={file.year} className="truncate">
-                        • {file.filename}
-                      </li>
-                    ))}
-                </ul>
-              </div>
-              <div>
-                <p className="font-medium mb-1">Información técnica:</p>
-                <ul className="space-y-1">
-                  <li>• Formato: JSON</li>
-                  <li>• Actualización: Automática</li>
-                  <li>• Fuente: Repositorio GitHub</li>
-                  <li>• Período: 2020-2023</li>
-                </ul>
               </div>
             </div>
           </div>
