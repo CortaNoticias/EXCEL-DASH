@@ -19,6 +19,7 @@ import {
   Cell,
 } from "recharts"
 import { formatCurrency } from "@/lib/utils"
+import JunaebStats from "@/components/junaeb-stats"
 
 interface DashboardProps {
   data: any[]
@@ -304,11 +305,13 @@ export default function Dashboard({ data, sheetName }: DashboardProps) {
           </div>
         </CardContent>
       </Card>
+
+      <JunaebStats data={processedData} />
     </div>
   )
 }
 
-// Función para encontrar el monto notificado en un objeto
+// Función para encontrar el monto notificado en un objeto (específico para JUNAEB)
 function findMontoNotificado(item: any): number {
   const possibleKeys = [
     "montoNotificado",
@@ -317,6 +320,13 @@ function findMontoNotificado(item: any): number {
     "MONTO NOTIFICADO",
     "Monto Notificado",
     "monto notificado",
+    "multa",
+    "Multa",
+    "MULTA",
+    "monto_multa",
+    "MontoMulta",
+    "valor_multa",
+    "ValorMulta",
   ]
 
   for (const key of possibleKeys) {
@@ -325,9 +335,13 @@ function findMontoNotificado(item: any): number {
     }
   }
 
-  // Buscar cualquier clave que contenga "notificado"
+  // Buscar cualquier clave que contenga "notificado", "multa" o "monto"
   for (const key in item) {
-    if (key.toLowerCase().includes("notificado") && !isNaN(Number(item[key]))) {
+    const lowerKey = key.toLowerCase()
+    if (
+      (lowerKey.includes("notificado") || lowerKey.includes("multa") || lowerKey.includes("monto")) &&
+      !isNaN(Number(item[key]))
+    ) {
       return Number(item[key])
     }
   }
@@ -335,7 +349,7 @@ function findMontoNotificado(item: any): number {
   return 0
 }
 
-// Función para encontrar el monto ejecutado en un objeto
+// Función para encontrar el monto ejecutado en un objeto (específico para JUNAEB)
 function findMontoEjecutado(item: any): number {
   const possibleKeys = [
     "montoEjecutado",
@@ -345,6 +359,16 @@ function findMontoEjecutado(item: any): number {
     "MONTO EJECUTADO",
     "Monto Ejecutado",
     "monto ejecutado",
+    "pagado",
+    "Pagado",
+    "PAGADO",
+    "monto_pagado",
+    "MontoPagado",
+    "valor_pagado",
+    "ValorPagado",
+    "cobrado",
+    "Cobrado",
+    "COBRADO",
   ]
 
   for (const key of possibleKeys) {
@@ -353,10 +377,11 @@ function findMontoEjecutado(item: any): number {
     }
   }
 
-  // Buscar cualquier clave que contenga "ejecutado" o "ejecuta"
+  // Buscar cualquier clave que contenga "ejecutado", "pagado" o "cobrado"
   for (const key in item) {
+    const lowerKey = key.toLowerCase()
     if (
-      (key.toLowerCase().includes("ejecuta") || key.toLowerCase().includes("ejecutado")) &&
+      (lowerKey.includes("ejecuta") || lowerKey.includes("pagado") || lowerKey.includes("cobrado")) &&
       !isNaN(Number(item[key]))
     ) {
       return Number(item[key])

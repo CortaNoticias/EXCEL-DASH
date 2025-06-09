@@ -13,7 +13,9 @@ import Dashboard from "@/components/dashboard"
 import { processExcelData } from "@/lib/excel-processor"
 
 export default function Home() {
-  const [url, setUrl] = useState("")
+  const [url, setUrl] = useState(
+    "https://raw.githubusercontent.com/tu-usuario/tu-repositorio/main/multas%20junaeb%20-%20base%20de%20datos.xlsx",
+  )
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [data, setData] = useState<any>(null)
@@ -50,23 +52,36 @@ export default function Home() {
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="flex flex-col md:flex-row gap-4">
-            <Input
-              type="text"
-              placeholder="URL del archivo Excel en GitHub (raw)"
-              value={url}
-              onChange={(e) => setUrl(e.target.value)}
-              className="flex-1"
-            />
-            <Button type="submit" disabled={isLoading || !url}>
-              {isLoading ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Procesando...
-                </>
-              ) : (
-                "Cargar Datos"
-              )}
-            </Button>
+            <div className="flex flex-col md:flex-row gap-4">
+              <Input
+                type="text"
+                placeholder="URL del archivo Excel en GitHub (raw)"
+                value={url}
+                onChange={(e) => setUrl(e.target.value)}
+                className="flex-1"
+              />
+              <Button type="submit" disabled={isLoading || !url}>
+                {isLoading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Procesando...
+                  </>
+                ) : (
+                  "Cargar Datos"
+                )}
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() =>
+                  setUrl(
+                    "https://raw.githubusercontent.com/tu-usuario/tu-repositorio/main/multas%20junaeb%20-%20base%20de%20datos.xlsx",
+                  )
+                }
+              >
+                Cargar JUNAEB
+              </Button>
+            </div>
           </form>
 
           {error && (

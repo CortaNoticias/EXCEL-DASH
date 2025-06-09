@@ -30,19 +30,32 @@ export async function processExcelData(url: string) {
       const worksheet = workbook.Sheets[sheetName]
       const jsonData = XLSX.utils.sheet_to_json(worksheet, { defval: null })
 
-      // Normalizar nombres de columnas
+      // Normalizar nombres de columnas específicos para JUNAEB
       const normalizedData = jsonData.map((row) => {
         const newRow: Record<string, any> = {}
 
         // Procesar cada columna
         Object.entries(row).forEach(([key, value]) => {
-          // Normalizar nombres de columnas comunes
           const normalizedKey = key.toLowerCase()
 
-          if (normalizedKey.includes("empresa")) {
+          if (
+            normalizedKey.includes("empresa") ||
+            normalizedKey.includes("proveedor") ||
+            normalizedKey.includes("contratista")
+          ) {
             newRow["empresa"] = value
-          } else if (normalizedKey.includes("institucion") || normalizedKey.includes("institución")) {
-            newRow["institucion"] = value
+          } else if (
+            normalizedKey.includes("institucion") ||
+            normalizedKey.includes("institución") ||
+            normalizedKey.includes("junaeb")
+          ) {
+            newRow["institucion"] = value || "JUNAEB"
+          } else if (normalizedKey.includes("fecha")) {
+            newRow["fecha"] = value
+          } else if (normalizedKey.includes("estado") || normalizedKey.includes("situacion")) {
+            newRow["estado"] = value
+          } else if (normalizedKey.includes("tipo") || normalizedKey.includes("categoria")) {
+            newRow["tipo"] = value
           } else {
             // Mantener la columna original
             newRow[key] = value
