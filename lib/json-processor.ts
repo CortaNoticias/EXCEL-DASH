@@ -1,28 +1,32 @@
-// Actualizar las URLs exactas verificadas en GitHub
+// URLs con múltiples alternativas para mayor confiabilidad
 const JSON_URLS = {
-  "2020":
+  "2020": [
     "https://raw.githubusercontent.com/CortaNoticias/EXCEL-DASH/main/csv/Multas%20Junaeb%20-%20Base%20de%20datos%20(TPA)%202020.json",
-  "2021":
+    "https://github.com/CortaNoticias/EXCEL-DASH/raw/main/csv/Multas%20Junaeb%20-%20Base%20de%20datos%20(TPA)%202020.json",
+  ],
+  "2021": [
     "https://raw.githubusercontent.com/CortaNoticias/EXCEL-DASH/main/csv/Multas%20Junaeb%20-%20Base%20de%20datos%20(TPA)%202021.json",
-  "2022":
+    "https://github.com/CortaNoticias/EXCEL-DASH/raw/main/csv/Multas%20Junaeb%20-%20Base%20de%20datos%20(TPA)%202021.json",
+  ],
+  "2022": [
     "https://raw.githubusercontent.com/CortaNoticias/EXCEL-DASH/main/csv/Multas%20Junaeb%20-%20Base%20de%20datos%20(TPA)%202022.json",
-  "2023":
+    "https://github.com/CortaNoticias/EXCEL-DASH/raw/main/csv/Multas%20Junaeb%20-%20Base%20de%20datos%20(TPA)%202022.json",
+  ],
+  "2023": [
     "https://raw.githubusercontent.com/CortaNoticias/EXCEL-DASH/main/csv/Multas%20Junaeb%20-%20Base%20de%20datos%20(TPA)%202023.json",
+    "https://github.com/CortaNoticias/EXCEL-DASH/raw/main/csv/Multas%20Junaeb%20-%20Base%20de%20datos%20(TPA)%202023.json",
+  ],
 }
 
-// Mejorar la función de carga con mejor manejo de errores y logging
 export async function loadJSONData(year?: string) {
   try {
-    console.log("=== INICIANDO CARGA DE DATOS REALES DESDE GITHUB ===")
+    console.log("=== INICIANDO CARGA DE DATOS DESDE GITHUB ===")
     console.log("Repositorio: CortaNoticias/EXCEL-DASH")
-    console.log("URLs disponibles:", Object.keys(JSON_URLS))
 
     if (year && JSON_URLS[year as keyof typeof JSON_URLS]) {
-      // Cargar un año específico
       console.log(`Cargando año específico: ${year}`)
       return await loadSingleYear(year)
     } else {
-      // Cargar todos los años
       console.log("Cargando todos los años disponibles...")
       return await loadAllYears()
     }
@@ -34,8 +38,84 @@ export async function loadJSONData(year?: string) {
 }
 
 async function loadSingleYear(year: string) {
-  const url = JSON_URLS[year as keyof typeof JSON_URLS]
-  console.log(`📥 Cargando ${year} desde: ${url}`)
+  const urls = JSON_URLS[year as keyof typeof JSON_URLS]
+  console.log(`📥 Intentando cargar ${year} con ${urls.length} URLs alternativas`)
+
+  let lastError: Error | null = null
+
+  // Intentar con cada URL hasta que una funcione
+  for (let i = 0; i < urls.length; i++) {
+    const url = urls[i]
+    console.log(`🔄 Intento ${i + 1}/${urls.length} para ${year}: ${url}`)
+
+    try {
+      const response = await fetchWithTimeout(url, 10000) // 10 segundos timeout
+
+      console.log(`📊 Respuesta ${year} (intento ${i + 1}):`, {
+        status: response.status,
+        statusText: response.statusText,
+        ok: response.ok,
+        headers: {
+          "content-type": response.headers.get("content-type"),
+          "content-length": response.headers.get("content-length"),
+        },
+      })
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+      }
+
+      const rawText = await response.text()
+      console.log(`📄 Contenido ${year}:`, {
+        length: rawText.length,
+        preview: rawText.substring(0, 100) + "...",
+        isJSON: rawText.trim().startsWith("{") || rawText.trim().startsWith("["),
+      })
+
+      if (!rawText.trim()) {
+        throw new Error("Respuesta vacía del servidor")
+      }
+
+      let data
+      try {
+        data = JSON.parse(rawText)
+        console.log(`✅ JSON parseado exitosamente para ${year}`)
+      } catch (parseError) {
+        console.error(`❌ Error al parsear JSON para ${year}:`, parseError)
+        throw new Error(`Formato JSON inválido: ${parseError}`)
+      }
+
+      const normalizedData = normalizeJSONData(data)
+      console.log(`🔄 ${year}: ${normalizedData.length} registros procesados`)
+
+      if (normalizedData.length === 0) {
+        throw new Error("No se encontraron datos válidos en el archivo")
+      }
+
+      return {
+        sheetNames: [year],
+        data: { [year]: normalizedData },
+      }
+    } catch (error) {
+      lastError = error as Error
+      console.warn(`⚠️ Fallo intento ${i + 1} para ${year}:`, error)
+
+      // Si no es el último intento, continuar con la siguiente URL
+      if (i < urls.length - 1) {
+        console.log(`🔄 Probando siguiente URL para ${year}...`)
+        continue
+      }
+    }
+  }
+
+  // Si llegamos aquí, todos los intentos fallaron
+  console.error(`❌ Todos los intentos fallaron para ${year}`)
+  throw lastError || new Error(`No se pudo cargar ${year} desde ninguna URL`)
+}
+
+async function fetchWithTimeout(url: string, timeout = 10000): Promise<Response> {
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort(), timeout)
 
   try {
     const response = await fetch(url, {
@@ -46,105 +126,48 @@ async function loadSingleYear(year: string) {
         "User-Agent": "Mozilla/5.0 (compatible; JunaebDashboard/1.0)",
       },
       mode: "cors",
+      signal: controller.signal,
     })
 
-    console.log(`📊 Respuesta ${year}:`, {
-      status: response.status,
-      statusText: response.statusText,
-      ok: response.ok,
-      url: response.url,
-    })
-
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}: ${response.statusText} para ${year}`)
-    }
-
-    const rawText = await response.text()
-    console.log(`📄 Contenido ${year}:`, {
-      length: rawText.length,
-      preview: rawText.substring(0, 100) + "...",
-      startsWithBrace: rawText.trim().startsWith("{") || rawText.trim().startsWith("["),
-    })
-
-    if (!rawText.trim()) {
-      throw new Error(`Respuesta vacía para ${year}`)
-    }
-
-    let data
-    try {
-      data = JSON.parse(rawText)
-      console.log(`✅ JSON parseado exitosamente para ${year}`)
-    } catch (parseError) {
-      console.error(`❌ Error al parsear JSON para ${year}:`, parseError)
-      console.log("Contenido problemático:", rawText.substring(0, 500))
-      throw new Error(`Formato JSON inválido para ${year}`)
-    }
-
-    const normalizedData = normalizeJSONData(data)
-    console.log(`🔄 ${year}: ${normalizedData.length} registros procesados y normalizados`)
-
-    // Verificar calidad de los datos
-    const sampleRecord = normalizedData[0]
-    if (sampleRecord) {
-      console.log(`📋 Muestra de datos ${year}:`, {
-        empresa: sampleRecord.empresa,
-        monto: sampleRecord.montoNotificado || "No encontrado",
-        fecha: sampleRecord.fecha,
-        keys: Object.keys(sampleRecord).slice(0, 5),
-      })
-    }
-
-    return {
-      sheetNames: [year],
-      data: { [year]: normalizedData },
-    }
+    clearTimeout(timeoutId)
+    return response
   } catch (error) {
-    console.error(`❌ Error específico al cargar ${year}:`, error)
+    clearTimeout(timeoutId)
+    if (error instanceof Error && error.name === "AbortError") {
+      throw new Error(`Timeout después de ${timeout}ms`)
+    }
     throw error
   }
 }
 
 async function loadAllYears() {
-  console.log("🔄 Iniciando carga masiva de todos los años...")
+  console.log("🔄 Iniciando carga de todos los años...")
   const allData: Record<string, any[]> = {}
   const loadedYears: string[] = []
   const errors: string[] = []
 
-  // Cargar años en paralelo para mejor rendimiento
-  const loadPromises = Object.entries(JSON_URLS).map(async ([yearKey, url]) => {
+  // Cargar años secuencialmente para evitar problemas de rate limiting
+  for (const [yearKey] of Object.entries(JSON_URLS)) {
     try {
       console.log(`\n--- 📥 Procesando ${yearKey} ---`)
       const result = await loadSingleYear(yearKey)
-      return { yearKey, data: result.data[yearKey], success: true }
+      allData[yearKey] = result.data[yearKey]
+      loadedYears.push(yearKey)
+      console.log(`✅ ${yearKey} cargado exitosamente (${result.data[yearKey].length} registros)`)
+
+      // Pequeña pausa entre requests para evitar rate limiting
+      await new Promise((resolve) => setTimeout(resolve, 500))
     } catch (error) {
       const errorMsg = `${yearKey}: ${error instanceof Error ? error.message : "Error desconocido"}`
+      errors.push(errorMsg)
       console.error(`❌ Error en ${yearKey}:`, error)
-      return { yearKey, error: errorMsg, success: false }
     }
-  })
-
-  const results = await Promise.allSettled(loadPromises)
-
-  results.forEach((result) => {
-    if (result.status === "fulfilled") {
-      const { yearKey, data, success, error } = result.value
-      if (success && data) {
-        allData[yearKey] = data
-        loadedYears.push(yearKey)
-        console.log(`✅ ${yearKey} cargado exitosamente (${data.length} registros)`)
-      } else if (error) {
-        errors.push(error)
-      }
-    } else {
-      errors.push(`Error de promesa: ${result.reason}`)
-    }
-  })
+  }
 
   console.log("\n=== 📊 RESUMEN FINAL DE CARGA ===")
-  console.log(
-    `✅ Años cargados exitosamente: ${loadedYears.join(", ")} (${loadedYears.length}/${Object.keys(JSON_URLS).length})`,
-  )
-  console.log(`❌ Errores encontrados: ${errors.length}`)
+  console.log(`✅ Años cargados: ${loadedYears.join(", ")} (${loadedYears.length}/${Object.keys(JSON_URLS).length})`)
+  console.log(`❌ Errores: ${errors.length}`)
+
   if (errors.length > 0) {
     console.log("Detalles de errores:", errors)
   }
@@ -154,7 +177,6 @@ async function loadAllYears() {
     return generateRealisticMockData()
   }
 
-  // Calcular estadísticas totales
   const totalRecords = Object.values(allData).reduce((sum, yearData) => sum + yearData.length, 0)
   console.log(`📈 Total de registros cargados: ${totalRecords}`)
 
@@ -164,51 +186,47 @@ async function loadAllYears() {
   }
 }
 
-// Mejorar la normalización de datos con mejor detección de campos
 function normalizeJSONData(data: any): any[] {
-  console.log("🔄 Iniciando normalización de datos...")
-  console.log("Tipo de datos recibidos:", typeof data, "Es array:", Array.isArray(data))
+  console.log("🔄 Iniciando normalización...")
+  console.log("Tipo:", typeof data, "Es array:", Array.isArray(data))
 
-  // Si es un array, procesarlo directamente
   if (Array.isArray(data)) {
-    console.log(`📊 Procesando array directo con ${data.length} elementos`)
+    console.log(`📊 Procesando array con ${data.length} elementos`)
     const normalized = data.map(normalizeRow).filter((row) => row !== null)
-    console.log(`✅ Normalizados ${normalized.length} registros válidos`)
+    console.log(`✅ ${normalized.length} registros válidos`)
     return normalized
   }
 
-  // Si es un objeto, buscar arrays dentro
   if (typeof data === "object" && data !== null) {
-    console.log("🔍 Explorando objeto para encontrar datos tabulares...")
+    console.log("🔍 Buscando arrays en objeto...")
 
-    // Buscar propiedades que contengan arrays
+    // Buscar arrays en propiedades
     for (const [key, value] of Object.entries(data)) {
       if (Array.isArray(value) && value.length > 0) {
-        console.log(`📋 Encontrado array en propiedad '${key}' con ${value.length} elementos`)
+        console.log(`📋 Array encontrado en '${key}' con ${value.length} elementos`)
         const normalized = value.map(normalizeRow).filter((row) => row !== null)
-        console.log(`✅ Normalizados ${normalized.length} registros válidos desde '${key}'`)
+        console.log(`✅ ${normalized.length} registros válidos desde '${key}'`)
         return normalized
       }
     }
 
-    // Buscar propiedades específicas de JUNAEB
-    const possibleDataKeys = ["data", "records", "items", "multas", "registros", "rows", "sheet", "worksheet"]
-    for (const key of possibleDataKeys) {
+    // Buscar propiedades específicas
+    const dataKeys = ["data", "records", "items", "multas", "registros", "rows", "sheet"]
+    for (const key of dataKeys) {
       if (data[key] && Array.isArray(data[key])) {
-        console.log(`📋 Encontrados datos en propiedad específica '${key}'`)
+        console.log(`📋 Datos encontrados en '${key}'`)
         const normalized = data[key].map(normalizeRow).filter((row) => row !== null)
-        console.log(`✅ Normalizados ${normalized.length} registros válidos`)
         return normalized
       }
     }
 
-    // Si no hay arrays, intentar convertir el objeto en un array
-    console.log("🔄 Convirtiendo objeto único a array")
+    // Convertir objeto único a array
+    console.log("🔄 Convirtiendo objeto único")
     const normalized = normalizeRow(data)
     return normalized ? [normalized] : []
   }
 
-  console.warn("⚠️ Datos no reconocidos, retornando array vacío")
+  console.warn("⚠️ Datos no reconocidos")
   return []
 }
 
@@ -220,111 +238,43 @@ function normalizeRow(row: any): any {
   const newRow: Record<string, any> = {}
   let hasValidData = false
 
-  // Procesar cada campo del JSON con mejor detección
   Object.entries(row).forEach(([key, value]) => {
     if (value !== null && value !== undefined && value !== "") {
       hasValidData = true
     }
 
-    const normalizedKey = typeof key === "string" ? key.toLowerCase().trim() : String(key).toLowerCase().trim()
+    const normalizedKey = String(key).toLowerCase().trim()
 
-    // Detectar empresa/proveedor/contratista con más variaciones
+    // Detectar campos principales
     if (
       normalizedKey.includes("empresa") ||
       normalizedKey.includes("proveedor") ||
-      normalizedKey.includes("contratista") ||
-      normalizedKey.includes("razón social") ||
-      normalizedKey.includes("razon social") ||
-      normalizedKey.includes("nombre") ||
-      normalizedKey.includes("contratante") ||
-      normalizedKey.includes("supplier") ||
-      normalizedKey.includes("contractor") ||
-      normalizedKey.includes("company") ||
-      normalizedKey.includes("firm")
+      normalizedKey.includes("contratista")
     ) {
       newRow["empresa"] = value
-    }
-    // Detectar institución
-    else if (
-      normalizedKey.includes("institucion") ||
-      normalizedKey.includes("institución") ||
-      normalizedKey.includes("junaeb") ||
-      normalizedKey.includes("organismo") ||
-      normalizedKey.includes("institution") ||
-      normalizedKey.includes("entity")
-    ) {
+    } else if (normalizedKey.includes("institucion") || normalizedKey.includes("junaeb")) {
       newRow["institucion"] = value || "JUNAEB"
-    }
-    // Detectar fechas con más formatos
-    else if (
-      normalizedKey.includes("fecha") ||
-      normalizedKey.includes("date") ||
-      normalizedKey.includes("año") ||
-      normalizedKey.includes("ano") ||
-      normalizedKey.includes("year") ||
-      normalizedKey.includes("time") ||
-      normalizedKey.includes("periodo")
-    ) {
+    } else if (normalizedKey.includes("fecha") || normalizedKey.includes("date")) {
       newRow["fecha"] = value
-    }
-    // Detectar estado con más variaciones
-    else if (
-      normalizedKey.includes("estado") ||
-      normalizedKey.includes("situacion") ||
-      normalizedKey.includes("status") ||
-      normalizedKey.includes("condicion") ||
-      normalizedKey.includes("state") ||
-      normalizedKey.includes("condition") ||
-      normalizedKey.includes("stage")
-    ) {
+    } else if (normalizedKey.includes("estado") || normalizedKey.includes("status")) {
       newRow["estado"] = value
-    }
-    // Detectar tipo con más categorías
-    else if (
-      normalizedKey.includes("tipo") ||
-      normalizedKey.includes("categoria") ||
-      normalizedKey.includes("clasificacion") ||
-      normalizedKey.includes("motivo") ||
-      normalizedKey.includes("type") ||
-      normalizedKey.includes("category") ||
-      normalizedKey.includes("class") ||
-      normalizedKey.includes("kind")
-    ) {
+    } else if (normalizedKey.includes("tipo") || normalizedKey.includes("categoria")) {
       newRow["tipo"] = value
-    }
-    // Detectar RUT con más formatos
-    else if (
-      normalizedKey.includes("rut") ||
-      normalizedKey.includes("identificacion") ||
-      normalizedKey.includes("cedula") ||
-      normalizedKey.includes("tax_id") ||
-      normalizedKey.includes("id") ||
-      normalizedKey.includes("dni")
-    ) {
+    } else if (normalizedKey.includes("rut") || normalizedKey.includes("id")) {
       newRow["rut"] = value
-    }
-    // Detectar región con más variaciones
-    else if (
-      normalizedKey.includes("region") ||
-      normalizedKey.includes("región") ||
-      normalizedKey.includes("area") ||
-      normalizedKey.includes("zone") ||
-      normalizedKey.includes("territory")
-    ) {
+    } else if (normalizedKey.includes("region") || normalizedKey.includes("area")) {
       newRow["region"] = value
     }
 
-    // Mantener la columna original
+    // Mantener columna original
     newRow[key] = value
   })
 
   return hasValidData ? newRow : null
 }
 
-// Actualizar datos de ejemplo con estructura más realista
 function generateRealisticMockData() {
-  console.log("🎭 Generando datos de ejemplo realistas para JUNAEB...")
-  console.log("⚠️ Nota: Estos son datos simulados para demostración")
+  console.log("🎭 Generando datos de ejemplo para JUNAEB...")
 
   const empresas = [
     "Alimentos del Sur S.A.",
@@ -337,14 +287,9 @@ function generateRealisticMockData() {
     "Nutrición Infantil S.A.",
     "Servicios Alimentarios del Norte",
     "Comidas Escolares Premium",
-    "Distribuidora Educacional",
-    "Alimentos Frescos S.A.",
-    "Cocinas Industriales Chile",
-    "Alimentación Saludable Ltda.",
-    "Servicios Nutricionales",
   ]
 
-  const estados = ["Notificado", "Ejecutado", "En Proceso", "Pendiente", "Resuelto", "Anulado", "Vigente"]
+  const estados = ["Notificado", "Ejecutado", "En Proceso", "Pendiente", "Resuelto", "Anulado"]
   const tipos = [
     "Multa por atraso en entrega",
     "Multa por calidad deficiente",
@@ -352,9 +297,6 @@ function generateRealisticMockData() {
     "Multa administrativa",
     "Multa por higiene",
     "Multa por documentación",
-    "Multa por temperatura",
-    "Multa por cantidad",
-    "Multa por especificaciones técnicas",
   ]
 
   const regiones = [
@@ -366,69 +308,42 @@ function generateRealisticMockData() {
     "Maule",
     "O'Higgins",
     "Antofagasta",
-    "Coquimbo",
-    "Tarapacá",
-    "Atacama",
-    "Aysén",
-    "Magallanes",
-    "Arica y Parinacota",
-    "Los Ríos",
   ]
 
   const mockData: Record<string, any[]> = {}
 
   Object.keys(JSON_URLS).forEach((year) => {
     const yearNum = Number.parseInt(year)
-    const recordCount = 40 + Math.floor(Math.random() * 30) // 40-70 registros por año
+    const recordCount = 35 + Math.floor(Math.random() * 25) // 35-60 registros
 
     mockData[year] = Array.from({ length: recordCount }, (_, i) => {
-      const montoNotificado = Math.floor(Math.random() * 20000000) + 500000 // 500K - 20.5M
-      const porcentajeEjecucion = Math.random() * 0.9 + 0.05 // 5% - 95%
+      const montoNotificado = Math.floor(Math.random() * 15000000) + 500000 // 500K - 15.5M
+      const porcentajeEjecucion = Math.random() * 0.85 + 0.1 // 10% - 95%
       const montoEjecutado = Math.floor(montoNotificado * porcentajeEjecucion)
 
       return {
-        // Identificadores
         id: `MOCK-${year}-${String(i + 1).padStart(3, "0")}`,
-        numeroMulta: `M-${year}-${String(i + 1).padStart(4, "0")}`,
-
-        // Datos principales
         empresa: empresas[Math.floor(Math.random() * empresas.length)],
         institucion: "JUNAEB",
-        rut: `${Math.floor(Math.random() * 30000000) + 5000000}-${Math.floor(Math.random() * 9)}`,
-
-        // Fechas
         fecha: `${year}-${String(Math.floor(Math.random() * 12) + 1).padStart(2, "0")}-${String(Math.floor(Math.random() * 28) + 1).padStart(2, "0")}`,
-        fechaNotificacion: `${year}-${String(Math.floor(Math.random() * 12) + 1).padStart(2, "0")}-${String(Math.floor(Math.random() * 28) + 1).padStart(2, "0")}`,
-        fechaVencimiento: `${year}-${String(Math.floor(Math.random() * 12) + 1).padStart(2, "0")}-${String(Math.floor(Math.random() * 28) + 1).padStart(2, "0")}`,
-
-        // Clasificación
         estado: estados[Math.floor(Math.random() * estados.length)],
         tipo: tipos[Math.floor(Math.random() * tipos.length)],
         region: regiones[Math.floor(Math.random() * regiones.length)],
-
-        // Montos
+        rut: `${Math.floor(Math.random() * 30000000) + 5000000}-${Math.floor(Math.random() * 9)}`,
         montoNotificado,
         montoEjecutado,
         diferencia: montoNotificado - montoEjecutado,
         porcentajeEjecucion: (porcentajeEjecucion * 100).toFixed(2),
-
-        // Datos temporales
         año: yearNum,
         trimestre: Math.floor(Math.random() * 4) + 1,
         mes: Math.floor(Math.random() * 12) + 1,
-
-        // Campos adicionales
-        observaciones:
-          i % 4 === 0 ? "Multa recurrente" : i % 7 === 0 ? "Caso especial" : i % 10 === 0 ? "Requiere seguimiento" : "",
-        prioridad: ["Alta", "Media", "Baja"][Math.floor(Math.random() * 3)],
-        responsable: ["Área Técnica", "Área Legal", "Área Administrativa"][Math.floor(Math.random() * 3)],
+        numeroMulta: `M-${year}-${String(i + 1).padStart(4, "0")}`,
+        observaciones: i % 5 === 0 ? "Multa recurrente" : i % 8 === 0 ? "Caso especial" : "",
       }
     })
   })
 
-  console.log(`🎭 Datos de ejemplo generados para años: ${Object.keys(mockData).join(", ")}`)
-  console.log(`📊 Total de registros simulados: ${Object.values(mockData).reduce((sum, arr) => sum + arr.length, 0)}`)
-
+  console.log(`🎭 Datos generados para: ${Object.keys(mockData).join(", ")}`)
   return {
     sheetNames: Object.keys(JSON_URLS).sort(),
     data: mockData,
@@ -442,10 +357,10 @@ export function getAvailableYears(): string[] {
 export function getDataSourceInfo() {
   return {
     baseUrl: "https://github.com/CortaNoticias/EXCEL-DASH/tree/main/csv",
-    files: Object.entries(JSON_URLS).map(([year, url]) => ({
+    files: Object.entries(JSON_URLS).map(([year, urls]) => ({
       year,
-      url,
-      filename: url.split("/").pop(),
+      url: urls[0], // URL principal
+      filename: urls[0].split("/").pop(),
     })),
     totalYears: Object.keys(JSON_URLS).length,
   }
