@@ -7,17 +7,45 @@ export async function processExcelData(url: string) {
       throw new Error("URL no proporcionada")
     }
 
-    // Obtener el archivo Excel desde la URL
-    const response = await fetch(url)
-    if (!response.ok) {
-      throw new Error(`Error al obtener el archivo: ${response.statusText}`)
+    console.log("Intentando cargar archivo desde:", url)
+
+    // Convertir URL de GitHub a URL raw si es necesario
+    let rawUrl = url
+    if (url.includes("github.com") && url.includes("/blob/")) {
+      rawUrl = url.replace("github.com", "raw.githubusercontent.com").replace("/blob/", "/")
+      console.log("URL convertida a raw:", rawUrl)
     }
 
+    // Obtener el archivo Excel desde la URL
+    const response = await fetch(rawUrl, {
+      method: "GET",
+      headers: {
+        Accept: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,*/*",
+      },
+    })
+
+    console.log("Response status:", response.status)
+    console.log("Response headers:", Object.fromEntries(response.headers.entries()))
+
+    if (!response.ok) {
+      throw new Error(`Error al obtener el archivo: ${response.status} ${response.statusText}. URL: ${rawUrl}`)
+    }
+
+    const contentType = response.headers.get("content-type")
+    console.log("Content-Type:", contentType)
+
     const arrayBuffer = await response.arrayBuffer()
+    console.log("Archivo descargado, tamaño:", arrayBuffer.byteLength, "bytes")
+
+    if (arrayBuffer.byteLength === 0) {
+      throw new Error("El archivo descargado está vacío")
+    }
+
     const workbook = XLSX.read(arrayBuffer, { type: "array" })
 
     // Obtener nombres de las hojas
     const sheetNames = workbook.SheetNames
+    console.log("Hojas encontradas:", sheetNames)
 
     if (sheetNames.length === 0) {
       throw new Error("El archivo Excel no contiene hojas")
@@ -29,6 +57,7 @@ export async function processExcelData(url: string) {
     sheetNames.forEach((sheetName) => {
       const worksheet = workbook.Sheets[sheetName]
       const jsonData = XLSX.utils.sheet_to_json(worksheet, { defval: null })
+      console.log(`Hoja ${sheetName}: ${jsonData.length} registros`)
 
       // Normalizar nombres de columnas específicos para JUNAEB
       const normalizedData = jsonData.map((row) => {
@@ -93,12 +122,18 @@ export async function processExcelData(url: string) {
       data[sheetName] = normalizedData
     })
 
+    console.log("Procesamiento completado exitosamente")
     return {
       sheetNames,
       data,
     }
   } catch (error) {
-    console.error("Error al procesar el archivo Excel:", error)
+    console.error("Error detallado al procesar el archivo Excel:", error)
+    if (error instanceof TypeError && error.message.includes("fetch")) {
+      throw new Error(
+        `Error de red al intentar descargar el archivo. Verifica que la URL sea correcta y que el archivo sea accesible públicamente.`,
+      )
+    }
     throw error
   }
 }

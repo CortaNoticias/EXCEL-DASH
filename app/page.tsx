@@ -15,9 +15,8 @@ import SheetOverview from "@/components/sheet-overview"
 import ExecutiveSummary from "@/components/executive-summary"
 
 export default function Home() {
-  const [url, setUrl] = useState(
-    "https://raw.githubusercontent.com/CortaNoticias/EXCEL-DASH/main/Multas%20Junaeb%20-%20Base%20de%20datos%20(TPA).xlsx",
-  )
+  // Cambiar la URL por defecto a una que funcione mejor
+  const [url, setUrl] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [data, setData] = useState<any>(null)
@@ -75,11 +74,11 @@ export default function Home() {
               <Button
                 type="button"
                 variant="outline"
-                onClick={() =>
-                  setUrl(
-                    "https://raw.githubusercontent.com/CortaNoticias/EXCEL-DASH/main/Multas%20Junaeb%20-%20Base%20de%20datos%20(TPA).xlsx",
-                  )
-                }
+                onClick={() => {
+                  const correctUrl =
+                    "https://raw.githubusercontent.com/CortaNoticias/EXCEL-DASH/main/Multas%20Junaeb%20-%20Base%20de%20datos%20(TPA).xlsx"
+                  setUrl(correctUrl)
+                }}
               >
                 Cargar JUNAEB
               </Button>
@@ -89,7 +88,22 @@ export default function Home() {
           {error && (
             <Alert variant="destructive" className="mt-4">
               <AlertCircle className="h-4 w-4" />
-              <AlertDescription>{error}</AlertDescription>
+              <AlertDescription>
+                <div className="space-y-2">
+                  <p>
+                    <strong>Error:</strong> {error}
+                  </p>
+                  <p className="text-sm">
+                    <strong>Sugerencias:</strong>
+                  </p>
+                  <ul className="text-sm list-disc list-inside space-y-1">
+                    <li>Verifica que el archivo Excel esté disponible públicamente en GitHub</li>
+                    <li>Asegúrate de usar la URL "raw" del archivo</li>
+                    <li>Comprueba que el archivo no esté corrupto</li>
+                    <li>Intenta usar el botón "Cargar JUNAEB" para la URL correcta</li>
+                  </ul>
+                </div>
+              </AlertDescription>
             </Alert>
           )}
         </CardContent>
