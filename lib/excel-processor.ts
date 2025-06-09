@@ -36,28 +36,53 @@ export async function processExcelData(url: string) {
 
         // Procesar cada columna
         Object.entries(row).forEach(([key, value]) => {
-          const normalizedKey = key.toLowerCase()
+          const normalizedKey = key.toLowerCase().trim()
 
+          // Detectar empresa/proveedor
           if (
             normalizedKey.includes("empresa") ||
             normalizedKey.includes("proveedor") ||
-            normalizedKey.includes("contratista")
+            normalizedKey.includes("contratista") ||
+            normalizedKey.includes("razón social") ||
+            normalizedKey.includes("razon social")
           ) {
             newRow["empresa"] = value
-          } else if (
+          }
+          // Detectar institución
+          else if (
             normalizedKey.includes("institucion") ||
             normalizedKey.includes("institución") ||
-            normalizedKey.includes("junaeb")
+            normalizedKey.includes("junaeb") ||
+            normalizedKey.includes("organismo")
           ) {
             newRow["institucion"] = value || "JUNAEB"
-          } else if (normalizedKey.includes("fecha")) {
+          }
+          // Detectar fechas
+          else if (normalizedKey.includes("fecha") || normalizedKey.includes("date")) {
             newRow["fecha"] = value
-          } else if (normalizedKey.includes("estado") || normalizedKey.includes("situacion")) {
+          }
+          // Detectar estado
+          else if (
+            normalizedKey.includes("estado") ||
+            normalizedKey.includes("situacion") ||
+            normalizedKey.includes("status")
+          ) {
             newRow["estado"] = value
-          } else if (normalizedKey.includes("tipo") || normalizedKey.includes("categoria")) {
+          }
+          // Detectar tipo
+          else if (
+            normalizedKey.includes("tipo") ||
+            normalizedKey.includes("categoria") ||
+            normalizedKey.includes("clasificacion")
+          ) {
             newRow["tipo"] = value
-          } else {
-            // Mantener la columna original
+          }
+          // Detectar RUT
+          else if (normalizedKey.includes("rut") || normalizedKey.includes("identificacion")) {
+            newRow["rut"] = value
+          }
+          // Mantener la columna original
+          else {
             newRow[key] = value
           }
         })

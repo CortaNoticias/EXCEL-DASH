@@ -11,10 +11,12 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Loader2, AlertCircle } from "lucide-react"
 import Dashboard from "@/components/dashboard"
 import { processExcelData } from "@/lib/excel-processor"
+import SheetOverview from "@/components/sheet-overview"
+import ExecutiveSummary from "@/components/executive-summary"
 
 export default function Home() {
   const [url, setUrl] = useState(
-    "https://raw.githubusercontent.com/tu-usuario/tu-repositorio/main/multas%20junaeb%20-%20base%20de%20datos.xlsx",
+    "https://raw.githubusercontent.com/CortaNoticias/EXCEL-DASH/main/Multas%20Junaeb%20-%20Base%20de%20datos%20(TPA).xlsx",
   )
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -75,7 +77,7 @@ export default function Home() {
                 variant="outline"
                 onClick={() =>
                   setUrl(
-                    "https://raw.githubusercontent.com/tu-usuario/tu-repositorio/main/multas%20junaeb%20-%20base%20de%20datos.xlsx",
+                    "https://raw.githubusercontent.com/CortaNoticias/EXCEL-DASH/main/Multas%20Junaeb%20-%20Base%20de%20datos%20(TPA).xlsx",
                   )
                 }
               >
@@ -95,6 +97,9 @@ export default function Home() {
 
       {data && sheetNames.length > 0 && (
         <>
+          <ExecutiveSummary data={data} sheetNames={sheetNames} />
+          <SheetOverview sheetNames={sheetNames} data={data} />
+
           <div className="mb-6">
             <Select value={activeSheet} onValueChange={setActiveSheet}>
               <SelectTrigger className="w-full md:w-[300px]">
