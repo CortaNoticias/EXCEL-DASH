@@ -1,19 +1,227 @@
-// Eliminar completamente la carga desde GitHub y usar solo datos de ejemplo
-// Ya que los archivos JSON no existen o no son accesibles
+// Cargar datos JSON desde GitHub con URLs específicas y fallback mejorado
 
 export async function loadJSONData(year?: string) {
-  console.log("=== CARGANDO DATOS DE DEMOSTRACIÓN ===")
-  console.log("ℹ️ Los archivos JSON no están disponibles en GitHub")
-  console.log("🎭 Generando datos de ejemplo realistas para JUNAEB...")
+  console.log("=== INICIANDO CARGA DE DATOS JUNAEB ===")
 
-  // Usar directamente datos de ejemplo sin intentar GitHub
-  return generateEnhancedMockData(year)
+  const availableYears = ["2020", "2021", "2022", "2023"]
+  const yearsToLoad = year ? [year] : availableYears
+
+  // URLs específicas de los archivos JSON en GitHub
+  const jsonUrls = {
+    "2020": "https://raw.githubusercontent.com/CortaNoticias/EXCEL-DASH/main/csv/2020.json",
+    "2021": "https://raw.githubusercontent.com/CortaNoticias/EXCEL-DASH/main/csv/2021.json",
+    "2022": "https://raw.githubusercontent.com/CortaNoticias/EXCEL-DASH/main/csv/2022.json",
+    "2023": "https://raw.githubusercontent.com/CortaNoticias/EXCEL-DASH/main/csv/2023.json",
+  }
+
+  const loadedData: Record<string, any[]> = {}
+  let successfulLoads = 0
+  let usingRealData = false
+
+  // Intentar cargar cada año desde GitHub
+  for (const yearToLoad of yearsToLoad) {
+    const url = jsonUrls[yearToLoad as keyof typeof jsonUrls]
+
+    if (!url) {
+      console.warn(`⚠️ No hay URL definida para el año ${yearToLoad}`)
+      continue
+    }
+
+    try {
+      console.log(`🔄 Intentando cargar ${yearToLoad} desde: ${url}`)
+
+      const response = await fetch(url, {
+        method: "GET",
+        headers: {
+          Accept: "application/json",
+          "Cache-Control": "no-cache",
+        },
+        mode: "cors",
+      })
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+      }
+
+      const jsonData = await response.json()
+
+      // Validar que sea un array válido
+      if (!Array.isArray(jsonData)) {
+        throw new Error(`Datos inválidos: esperaba array, recibió ${typeof jsonData}`)
+      }
+
+      // Procesar y normalizar los datos
+      const processedData = jsonData.map((item, index) => {
+        // Normalizar campos comunes
+        const normalizedItem = {
+          ...item,
+          // Asegurar campos estándar
+          id: item.id || `${yearToLoad}-${index + 1}`,
+          año: Number(yearToLoad),
+          empresa: item.empresa || item.Empresa || item.proveedor || item.Proveedor || "No especificada",
+          institucion: item.institucion || item.Institucion || "JUNAEB",
+          estado: item.estado || item.Estado || "No especificado",
+          tipo: item.tipo || item.Tipo || item.tipoMulta || "No especificado",
+          region: item.region || item.Region || "No especificada",
+          comuna: item.comuna || item.Comuna || "No especificada",
+          fecha: item.fecha || item.Fecha || item.fechaNotificacion || null,
+
+          // Normalizar montos (buscar diferentes variaciones)
+          montoNotificado: findMontoNotificado(item),
+          montoEjecutado: findMontoEjecutado(item),
+        }
+
+        // Calcular campos derivados
+        normalizedItem.diferencia = normalizedItem.montoNotificado - normalizedItem.montoEjecutado
+        normalizedItem.porcentajeEjecucion =
+          normalizedItem.montoNotificado > 0
+            ? (normalizedItem.montoEjecutado / normalizedItem.montoNotificado) * 100
+            : 0
+
+        return normalizedItem
+      })
+
+      loadedData[yearToLoad] = processedData
+      successfulLoads++
+      usingRealData = true
+
+      console.log(`✅ ${yearToLoad}: ${processedData.length} registros cargados desde GitHub`)
+    } catch (error) {
+      console.error(`❌ Error cargando ${yearToLoad}:`, error)
+
+      // Generar datos de fallback para este año específico
+      console.log(`🎭 Generando datos de fallback para ${yearToLoad}`)
+      loadedData[yearToLoad] = generateYearMockData(yearToLoad)
+    }
+  }
+
+  // Si no se pudo cargar ningún año real, usar todos los datos de ejemplo
+  if (successfulLoads === 0) {
+    console.log("🎭 No se pudieron cargar datos reales, usando datos de demostración completos")
+    return generateEnhancedMockData(year)
+  }
+
+  const totalRecords = Object.values(loadedData).reduce((sum, arr) => sum + arr.length, 0)
+
+  console.log(`📊 Resumen de carga:`)
+  console.log(`   ✅ ${successfulLoads} años cargados desde GitHub`)
+  console.log(`   🎭 ${yearsToLoad.length - successfulLoads} años con datos de fallback`)
+  console.log(`   📈 ${totalRecords} registros totales`)
+  console.log(`   🌐 Usando datos reales: ${usingRealData ? "SÍ" : "NO"}`)
+
+  return {
+    sheetNames: Object.keys(loadedData).sort(),
+    data: loadedData,
+    usingRealData,
+  }
 }
 
-// Generar datos de ejemplo más completos y realistas
-function generateEnhancedMockData(specificYear?: string) {
-  console.log("🎭 Generando datos de ejemplo para JUNAEB...")
+// Función para encontrar monto notificado en diferentes formatos
+function findMontoNotificado(item: any): number {
+  const possibleKeys = [
+    "montoNotificado",
+    "monto_notificado",
+    "MontoNotificado",
+    "MONTO_NOTIFICADO",
+    "Monto Notificado",
+    "monto notificado",
+    "multa",
+    "Multa",
+    "MULTA",
+    "monto_multa",
+    "MontoMulta",
+    "valor_multa",
+    "ValorMulta",
+    "valorMulta",
+    "monto",
+    "Monto",
+    "valor",
+    "Valor",
+    "importe",
+    "Importe",
+    "cantidad",
+    "Cantidad",
+  ]
 
+  // Buscar por claves exactas primero
+  for (const key of possibleKeys) {
+    if (item[key] !== undefined && item[key] !== null && !isNaN(Number(item[key]))) {
+      const value = Number(item[key])
+      if (value > 0) return value
+    }
+  }
+
+  // Buscar por claves que contengan palabras clave
+  for (const key in item) {
+    const lowerKey = key.toLowerCase()
+    if (
+      (lowerKey.includes("notificado") ||
+        lowerKey.includes("multa") ||
+        lowerKey.includes("monto") ||
+        lowerKey.includes("valor")) &&
+      !isNaN(Number(item[key]))
+    ) {
+      const value = Number(item[key])
+      if (value > 0) return value
+    }
+  }
+
+  return 0
+}
+
+// Función para encontrar monto ejecutado en diferentes formatos
+function findMontoEjecutado(item: any): number {
+  const possibleKeys = [
+    "montoEjecutado",
+    "monto_ejecutado",
+    "MontoEjecutado",
+    "MONTO_EJECUTADO",
+    "Monto Ejecutado",
+    "monto ejecutado",
+    "pagado",
+    "Pagado",
+    "PAGADO",
+    "monto_pagado",
+    "MontoPagado",
+    "valor_pagado",
+    "ValorPagado",
+    "cobrado",
+    "Cobrado",
+    "COBRADO",
+    "recaudado",
+    "Recaudado",
+    "ejecutado",
+    "Ejecutado",
+  ]
+
+  // Buscar por claves exactas primero
+  for (const key of possibleKeys) {
+    if (item[key] !== undefined && item[key] !== null && !isNaN(Number(item[key]))) {
+      const value = Number(item[key])
+      if (value >= 0) return value
+    }
+  }
+
+  // Buscar por claves que contengan palabras clave
+  for (const key in item) {
+    const lowerKey = key.toLowerCase()
+    if (
+      (lowerKey.includes("ejecutado") ||
+        lowerKey.includes("pagado") ||
+        lowerKey.includes("cobrado") ||
+        lowerKey.includes("recaudado")) &&
+      !isNaN(Number(item[key]))
+    ) {
+      const value = Number(item[key])
+      if (value >= 0) return value
+    }
+  }
+
+  return 0
+}
+
+// Generar datos de ejemplo para un año específico
+function generateYearMockData(year: string) {
   const empresas = [
     "Alimentos del Sur S.A.",
     "Servicios Escolares Ltda.",
@@ -27,198 +235,58 @@ function generateEnhancedMockData(specificYear?: string) {
     "Comidas Escolares Premium",
     "Distribuidora Educacional",
     "Alimentos Frescos S.A.",
-    "Cocinas Industriales Chile",
-    "Alimentación Saludable Ltda.",
-    "Servicios Nutricionales Spa",
-    "Catering Metropolitano",
-    "Alimentos Escolares del Sur",
-    "Distribuidora Nacional",
-    "Servicios de Alimentación Integral",
-    "Cocinas Centrales Chile",
-    "Proveedores Alimentarios Unidos",
-    "Catering Educacional",
-    "Alimentos Nutritivos S.A.",
-    "Servicios Gastronómicos Escolares",
-    "Distribuidora Alimentaria Nacional",
   ]
 
-  const estados = ["Notificado", "Ejecutado", "En Proceso", "Pendiente", "Resuelto", "Anulado", "Vigente", "Vencido"]
-
+  const estados = ["Notificado", "Ejecutado", "En Proceso", "Pendiente", "Resuelto"]
   const tipos = [
     "Multa por atraso en entrega",
     "Multa por calidad deficiente",
     "Multa por incumplimiento contractual",
     "Multa administrativa",
-    "Multa por higiene",
-    "Multa por documentación",
-    "Multa por temperatura inadecuada",
-    "Multa por cantidad insuficiente",
-    "Multa por especificaciones técnicas",
-    "Multa por manipulación de alimentos",
-    "Multa por envases inadecuados",
-    "Multa por etiquetado incorrecto",
   ]
 
-  const regiones = [
-    "Región Metropolitana",
-    "Valparaíso",
-    "Biobío",
-    "Araucanía",
-    "Los Lagos",
-    "Maule",
-    "O'Higgins",
-    "Antofagasta",
-    "Coquimbo",
-    "Tarapacá",
-    "Atacama",
-    "Aysén",
-    "Magallanes",
-    "Arica y Parinacota",
-    "Los Ríos",
-  ]
+  const recordCount = 80 + Math.floor(Math.random() * 40) // 80-120 registros
 
-  const comunas = [
-    "Santiago",
-    "Valparaíso",
-    "Concepción",
-    "La Serena",
-    "Antofagasta",
-    "Temuco",
-    "Rancagua",
-    "Talca",
-    "Arica",
-    "Iquique",
-    "Puerto Montt",
-    "Chillán",
-    "Los Ángeles",
-    "Valdivia",
-    "Osorno",
-    "Quillota",
-    "Curicó",
-    "Linares",
-    "Ovalle",
-    "Calama",
-    "Copiapó",
-    "Puerto Aysén",
-    "Punta Arenas",
-    "Puente Alto",
-    "Maipú",
-    "Las Condes",
-    "Providencia",
-    "Ñuñoa",
-    "San Bernardo",
-    "Quilicura",
-    "Peñalolén",
-    "La Florida",
-  ]
+  return Array.from({ length: recordCount }, (_, i) => {
+    const montoNotificado = Math.floor(Math.random() * 20000000) + 500000
+    const porcentajeEjecucion = Math.random() * 0.8 + 0.1
+    const montoEjecutado = Math.floor(montoNotificado * porcentajeEjecucion)
+
+    return {
+      id: `FALLBACK-${year}-${i + 1}`,
+      año: Number(year),
+      empresa: empresas[Math.floor(Math.random() * empresas.length)],
+      institucion: "JUNAEB",
+      estado: estados[Math.floor(Math.random() * estados.length)],
+      tipo: tipos[Math.floor(Math.random() * tipos.length)],
+      region: "Región Metropolitana",
+      comuna: "Santiago",
+      fecha: `${year}-${String(Math.floor(Math.random() * 12) + 1).padStart(2, "0")}-${String(Math.floor(Math.random() * 28) + 1).padStart(2, "0")}`,
+      montoNotificado,
+      montoEjecutado,
+      diferencia: montoNotificado - montoEjecutado,
+      porcentajeEjecucion: Number((porcentajeEjecucion * 100).toFixed(2)),
+    }
+  })
+}
+
+// Generar datos de ejemplo completos (solo como último recurso)
+function generateEnhancedMockData(specificYear?: string) {
+  console.log("🎭 Generando datos de demostración completos...")
 
   const availableYears = ["2020", "2021", "2022", "2023"]
   const yearsToGenerate = specificYear ? [specificYear] : availableYears
 
   const mockData: Record<string, any[]> = {}
 
-  // Generar muchos más registros por año para ser más realista
   yearsToGenerate.forEach((year) => {
-    const yearNum = Number.parseInt(year)
-    // Aumentar significativamente: 150-250 registros por año
-    const recordCount = 150 + Math.floor(Math.random() * 100) // 150-250 registros
-
-    mockData[year] = Array.from({ length: recordCount }, (_, i) => {
-      // Generar montos en pesos chilenos realistas
-      const montoNotificado = Math.floor(Math.random() * 30000000) + 500000 // $500.000 - $30.500.000 CLP
-      const porcentajeEjecucion = Math.random() * 0.9 + 0.05 // 5% - 95%
-      const montoEjecutado = Math.floor(montoNotificado * porcentajeEjecucion)
-
-      // Generar fechas realistas para el año
-      const mes = Math.floor(Math.random() * 12) + 1
-      const dia = Math.floor(Math.random() * 28) + 1
-      const fecha = `${year}-${String(mes).padStart(2, "0")}-${String(dia).padStart(2, "0")}`
-
-      return {
-        // Identificadores
-        id: `DEMO-${year}-${String(i + 1).padStart(3, "0")}`,
-        numeroMulta: `M-${year}-${String(i + 1).padStart(4, "0")}`,
-
-        // Datos principales
-        empresa: empresas[Math.floor(Math.random() * empresas.length)],
-        institucion: "JUNAEB",
-        rut: `${Math.floor(Math.random() * 30000000) + 5000000}-${Math.floor(Math.random() * 9)}`,
-
-        // Fechas
-        fecha: fecha,
-        fechaNotificacion: fecha,
-        fechaVencimiento: `${year}-${String(Math.floor(Math.random() * 12) + 1).padStart(2, "0")}-${String(Math.floor(Math.random() * 28) + 1).padStart(2, "0")}`,
-
-        // Ubicación
-        region: regiones[Math.floor(Math.random() * regiones.length)],
-        comuna: comunas[Math.floor(Math.random() * comunas.length)],
-
-        // Clasificación
-        estado: estados[Math.floor(Math.random() * estados.length)],
-        tipo: tipos[Math.floor(Math.random() * tipos.length)],
-
-        // Montos en pesos chilenos
-        montoNotificado,
-        montoEjecutado,
-        diferencia: montoNotificado - montoEjecutado,
-        porcentajeEjecucion: Number((porcentajeEjecucion * 100).toFixed(2)),
-
-        // Datos temporales
-        año: yearNum,
-        trimestre: Math.ceil(mes / 3),
-        mes: mes,
-
-        // Campos adicionales específicos de JUNAEB
-        programa: ["PAE", "PAP"][Math.floor(Math.random() * 2)],
-        modalidad: ["Terceros", "Manipulación"][Math.floor(Math.random() * 2)],
-        establecimiento: `Escuela ${Math.floor(Math.random() * 1000) + 1}`,
-
-        // Indicadores de gestión
-        prioridad: ["Alta", "Media", "Baja"][Math.floor(Math.random() * 3)],
-        responsable: ["Área Técnica", "Área Legal", "Área Administrativa"][Math.floor(Math.random() * 3)],
-        gravedad: ["Leve", "Moderada", "Grave", "Muy Grave"][Math.floor(Math.random() * 4)],
-
-        // Campos adicionales
-        reincidencia: Math.random() > 0.7,
-        resuelto: Math.random() > 0.3,
-        observaciones:
-          i % 8 === 0
-            ? "Multa recurrente"
-            : i % 12 === 0
-              ? "Caso especial"
-              : i % 15 === 0
-                ? "Requiere seguimiento"
-                : "",
-
-        // Datos de contacto (simulados)
-        telefono: `+56 9 ${Math.floor(Math.random() * 90000000) + 10000000}`,
-        email: `contacto@${empresas[Math.floor(Math.random() * empresas.length)].toLowerCase().replace(/[^a-z]/g, "")}.cl`,
-
-        // Información del contrato
-        numeroContrato: `C-${year}-${String(Math.floor(Math.random() * 1000) + 1).padStart(3, "0")}`,
-        montoContrato: montoNotificado * (2 + Math.random() * 8), // 2-10 veces el monto de la multa
-
-        // Fechas del proceso
-        fechaInspeccion: `${year}-${String(Math.floor(Math.random() * 12) + 1).padStart(2, "0")}-${String(Math.floor(Math.random() * 28) + 1).padStart(2, "0")}`,
-        fechaResolucion:
-          Math.random() > 0.5
-            ? `${year}-${String(Math.floor(Math.random() * 12) + 1).padStart(2, "0")}-${String(Math.floor(Math.random() * 28) + 1).padStart(2, "0")}`
-            : null,
-      }
-    })
+    mockData[year] = generateYearMockData(year)
   })
-
-  const totalRecords = Object.values(mockData).reduce((sum, arr) => sum + arr.length, 0)
-  console.log(`🎭 Datos generados exitosamente:`)
-  console.log(`   📊 ${Object.keys(mockData).length} años`)
-  console.log(`   📈 ${totalRecords.toLocaleString()} registros totales`)
-  console.log(`   💰 Montos en pesos chilenos (CLP)`)
-  console.log(`   🏢 ${empresas.length} empresas diferentes`)
-  console.log(`   📍 ${regiones.length} regiones de Chile`)
 
   return {
     sheetNames: Object.keys(mockData).sort(),
     data: mockData,
+    usingRealData: false,
   }
 }
 
@@ -228,12 +296,28 @@ export function getAvailableYears(): string[] {
 
 export function getDataSourceInfo() {
   return {
-    baseUrl: "https://github.com/CortaNoticias/EXCEL-DASH/tree/main/csv",
+    baseUrl: "https://raw.githubusercontent.com/CortaNoticias/EXCEL-DASH/main/csv/",
     files: [
-      { year: "2020", url: "N/A", filename: "datos_demo_2020.json" },
-      { year: "2021", url: "N/A", filename: "datos_demo_2021.json" },
-      { year: "2022", url: "N/A", filename: "datos_demo_2022.json" },
-      { year: "2023", url: "N/A", filename: "datos_demo_2023.json" },
+      {
+        year: "2020",
+        url: "https://raw.githubusercontent.com/CortaNoticias/EXCEL-DASH/main/csv/2020.json",
+        filename: "2020.json",
+      },
+      {
+        year: "2021",
+        url: "https://raw.githubusercontent.com/CortaNoticias/EXCEL-DASH/main/csv/2021.json",
+        filename: "2021.json",
+      },
+      {
+        year: "2022",
+        url: "https://raw.githubusercontent.com/CortaNoticias/EXCEL-DASH/main/csv/2022.json",
+        filename: "2022.json",
+      },
+      {
+        year: "2023",
+        url: "https://raw.githubusercontent.com/CortaNoticias/EXCEL-DASH/main/csv/2023.json",
+        filename: "2023.json",
+      },
     ],
     totalYears: 4,
   }

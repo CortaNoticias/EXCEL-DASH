@@ -6,7 +6,18 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import { Collapsible, CollapsibleContent } from "@/components/ui/collapsible"
-import { Loader2, AlertCircle, Database, TrendingUp, Wifi, Info, BarChart3, PieChart, FileText } from "lucide-react"
+import {
+  Loader2,
+  AlertCircle,
+  Database,
+  TrendingUp,
+  Wifi,
+  Info,
+  BarChart3,
+  PieChart,
+  FileText,
+  WifiOff,
+} from "lucide-react"
 import Dashboard from "@/components/dashboard"
 import { loadJSONData } from "@/lib/json-processor"
 import SheetOverview from "@/components/sheet-overview"
@@ -21,7 +32,7 @@ export default function Home() {
   const [data, setData] = useState<any>(null)
   const [activeSheet, setActiveSheet] = useState<string>("")
   const [sheetNames, setSheetNames] = useState<string[]>([])
-  const [isUsingMockData, setIsUsingMockData] = useState(false)
+  const [isUsingRealData, setIsUsingRealData] = useState(false)
   const [connectionStatus, setConnectionStatus] = useState<"checking" | "connected" | "failed">("checking")
   const [showInfo, setShowInfo] = useState(false)
 
@@ -33,7 +44,6 @@ export default function Home() {
   const handleYearSelect = async (year: string) => {
     setIsLoading(true)
     setError(null)
-    setIsUsingMockData(false)
     setConnectionStatus("checking")
 
     try {
@@ -43,19 +53,15 @@ export default function Home() {
       setData(result.data)
       setSheetNames(result.sheetNames)
       setActiveSheet(result.sheetNames[0])
+      setIsUsingRealData(result.usingRealData || false)
 
-      // Detectar si estamos usando datos de ejemplo
-      const firstYearData = result.data[result.sheetNames[0]]
-      if (firstYearData && firstYearData.length > 0) {
-        const firstRecord = firstYearData[0]
-        if (firstRecord.id && typeof firstRecord.id === "string" && firstRecord.id.startsWith("DEMO-")) {
-          setIsUsingMockData(true)
-          setConnectionStatus("failed")
-          console.log("⚠️ Usando datos de ejemplo")
-        } else {
-          setConnectionStatus("connected")
-          console.log("✅ Usando datos reales")
-        }
+      // Determinar estado de conexión basado en si usamos datos reales
+      if (result.usingRealData) {
+        setConnectionStatus("connected")
+        console.log("✅ Usando datos reales de GitHub")
+      } else {
+        setConnectionStatus("failed")
+        console.log("⚠️ Usando datos de fallback")
       }
 
       setIsLoading(false)
@@ -63,6 +69,7 @@ export default function Home() {
       console.error("❌ Error al cargar datos:", err)
       setError(err instanceof Error ? err.message : "Error al procesar los datos JSON")
       setConnectionStatus("failed")
+      setIsUsingRealData(false)
       setIsLoading(false)
     }
   }
@@ -111,19 +118,19 @@ export default function Home() {
           {connectionStatus === "checking" && (
             <div className="flex items-center gap-2 text-blue-600 text-sm">
               <Loader2 className="h-3 w-3 animate-spin" />
-              <span>Cargando...</span>
+              <span>Conectando a GitHub...</span>
             </div>
           )}
           {connectionStatus === "connected" && (
             <div className="flex items-center gap-2 text-green-600 text-sm">
               <Wifi className="h-3 w-3" />
-              <span>Datos oficiales</span>
+              <span>Datos oficiales de GitHub</span>
             </div>
           )}
           {connectionStatus === "failed" && (
-            <div className="flex items-center gap-2 text-blue-600 text-sm">
-              <Database className="h-3 w-3" />
-              <span>Datos de demostración</span>
+            <div className="flex items-center gap-2 text-amber-600 text-sm">
+              <WifiOff className="h-3 w-3" />
+              <span>{isUsingRealData ? "Datos parciales" : "Datos de demostración"}</span>
             </div>
           )}
         </div>
@@ -140,7 +147,7 @@ export default function Home() {
       {/* Información colapsable */}
       <Collapsible open={showInfo} onOpenChange={setShowInfo}>
         <CollapsibleContent className="mb-6">
-          <DataSourceInfo loadedYears={sheetNames} isUsingMockData={isUsingMockData} />
+          <DataSourceInfo loadedYears={sheetNames} isUsingRealData={isUsingRealData} />
         </CollapsibleContent>
       </Collapsible>
 
@@ -175,7 +182,9 @@ export default function Home() {
                 {sheetNames.map((year) => (
                   <div
                     key={year}
-                    className="flex items-center gap-1 text-xs bg-green-100 text-green-800 px-2 py-1 rounded"
+                    className={`flex items-center gap-1 text-xs px-2 py-1 rounded ${
+                      isUsingRealData ? "bg-green-100 text-green-800" : "bg-blue-100 text-blue-800"
+                    }`}
                   >
                     <span>{year}</span>
                     <span className="font-medium">{data[year]?.length.toLocaleString() || 0} registros</span>
@@ -192,8 +201,8 @@ export default function Home() {
         <Alert variant="destructive" className="mb-6">
           <AlertCircle className="h-4 w-4" />
           <AlertDescription>
-            <p className="font-medium">Error de conexión</p>
-            <p className="text-sm">Usando datos de demostración. La funcionalidad completa está disponible.</p>
+            <p className="font-medium">Error de conexión con GitHub</p>
+            <p className="text-sm">Usando datos de fallback. Funcionalidad completa disponible.</p>
           </AlertDescription>
         </Alert>
       )}
@@ -204,8 +213,8 @@ export default function Home() {
           <CardContent className="p-6 flex items-center justify-center gap-3">
             <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
             <div>
-              <p className="font-medium">Cargando datos de JUNAEB...</p>
-              <p className="text-sm text-muted-foreground">Preparando análisis</p>
+              <p className="font-medium">Cargando datos de JUNAEB desde GitHub...</p>
+              <p className="text-sm text-muted-foreground">Verificando archivos JSON oficiales</p>
             </div>
           </CardContent>
         </Card>
@@ -249,7 +258,10 @@ export default function Home() {
                   <PieChart className="h-5 w-5" />
                   Análisis Consolidado 2020-2023
                 </CardTitle>
-                <CardDescription>Vista unificada con gráficos interactivos y análisis detallado</CardDescription>
+                <CardDescription>
+                  Vista unificada con gráficos interactivos •{" "}
+                  {isUsingRealData ? "Datos oficiales" : "Datos de demostración"}
+                </CardDescription>
               </CardHeader>
             </Card>
 
