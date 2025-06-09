@@ -35,6 +35,11 @@ function generateEnhancedMockData(specificYear?: string) {
     "Distribuidora Nacional",
     "Servicios de Alimentación Integral",
     "Cocinas Centrales Chile",
+    "Proveedores Alimentarios Unidos",
+    "Catering Educacional",
+    "Alimentos Nutritivos S.A.",
+    "Servicios Gastronómicos Escolares",
+    "Distribuidora Alimentaria Nacional",
   ]
 
   const estados = ["Notificado", "Ejecutado", "En Proceso", "Pendiente", "Resuelto", "Anulado", "Vigente", "Vencido"]
@@ -93,6 +98,18 @@ function generateEnhancedMockData(specificYear?: string) {
     "Linares",
     "Ovalle",
     "Calama",
+    "Copiapó",
+    "Puerto Aysén",
+    "Punta Arenas",
+    "Puente Alto",
+    "Maipú",
+    "Las Condes",
+    "Providencia",
+    "Ñuñoa",
+    "San Bernardo",
+    "Quilicura",
+    "Peñalolén",
+    "La Florida",
   ]
 
   const availableYears = ["2020", "2021", "2022", "2023"]
@@ -100,10 +117,11 @@ function generateEnhancedMockData(specificYear?: string) {
 
   const mockData: Record<string, any[]> = {}
 
-  // Generar datos para cada año
+  // Generar muchos más registros por año para ser más realista
   yearsToGenerate.forEach((year) => {
     const yearNum = Number.parseInt(year)
-    const recordCount = 50 + Math.floor(Math.random() * 40) // 50-90 registros por año
+    // Aumentar significativamente: 150-250 registros por año
+    const recordCount = 150 + Math.floor(Math.random() * 100) // 150-250 registros
 
     mockData[year] = Array.from({ length: recordCount }, (_, i) => {
       // Generar montos en pesos chilenos realistas
@@ -153,7 +171,7 @@ function generateEnhancedMockData(specificYear?: string) {
         // Campos adicionales específicos de JUNAEB
         programa: ["PAE", "PAP"][Math.floor(Math.random() * 2)],
         modalidad: ["Terceros", "Manipulación"][Math.floor(Math.random() * 2)],
-        establecimiento: `Escuela ${Math.floor(Math.random() * 500) + 1}`,
+        establecimiento: `Escuela ${Math.floor(Math.random() * 1000) + 1}`,
 
         // Indicadores de gestión
         prioridad: ["Alta", "Media", "Baja"][Math.floor(Math.random() * 3)],
@@ -193,7 +211,7 @@ function generateEnhancedMockData(specificYear?: string) {
   const totalRecords = Object.values(mockData).reduce((sum, arr) => sum + arr.length, 0)
   console.log(`🎭 Datos generados exitosamente:`)
   console.log(`   📊 ${Object.keys(mockData).length} años`)
-  console.log(`   📈 ${totalRecords} registros totales`)
+  console.log(`   📈 ${totalRecords.toLocaleString()} registros totales`)
   console.log(`   💰 Montos en pesos chilenos (CLP)`)
   console.log(`   🏢 ${empresas.length} empresas diferentes`)
   console.log(`   📍 ${regiones.length} regiones de Chile`)

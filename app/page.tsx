@@ -4,12 +4,13 @@ import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Loader2, AlertCircle, Database, TrendingUp, Wifi, WifiOff } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { Collapsible, CollapsibleContent } from "@/components/ui/collapsible"
+import { Loader2, AlertCircle, Database, TrendingUp, Wifi, Info, BarChart3, PieChart, FileText } from "lucide-react"
 import Dashboard from "@/components/dashboard"
 import { loadJSONData } from "@/lib/json-processor"
 import SheetOverview from "@/components/sheet-overview"
 import ExecutiveSummary from "@/components/executive-summary"
-import YearSelector from "@/components/year-selector"
 import TemporalAnalysis from "@/components/temporal-analysis"
 import DataSourceInfo from "@/components/data-source-info"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -22,6 +23,7 @@ export default function Home() {
   const [sheetNames, setSheetNames] = useState<string[]>([])
   const [isUsingMockData, setIsUsingMockData] = useState(false)
   const [connectionStatus, setConnectionStatus] = useState<"checking" | "connected" | "failed">("checking")
+  const [showInfo, setShowInfo] = useState(false)
 
   // Cargar todos los años al iniciar
   useEffect(() => {
@@ -46,7 +48,7 @@ export default function Home() {
       const firstYearData = result.data[result.sheetNames[0]]
       if (firstYearData && firstYearData.length > 0) {
         const firstRecord = firstYearData[0]
-        if (firstRecord.id && typeof firstRecord.id === "string" && firstRecord.id.startsWith("MOCK-")) {
+        if (firstRecord.id && typeof firstRecord.id === "string" && firstRecord.id.startsWith("DEMO-")) {
           setIsUsingMockData(true)
           setConnectionStatus("failed")
           console.log("⚠️ Usando datos de ejemplo")
@@ -65,91 +67,170 @@ export default function Home() {
     }
   }
 
-  return (
-    <main className="container mx-auto py-10 px-4 md:px-6">
-      <div className="text-center mb-8">
-        <h1 className="text-4xl font-bold mb-4">Dashboard de Análisis de Deudas PAE-PAP</h1>
-        <p className="text-lg text-muted-foreground">Análisis interactivo de multas JUNAEB • Período 2020-2023</p>
+  // Calcular estadísticas rápidas para el header
+  const quickStats = data
+    ? {
+        totalRecords: Object.values(data).reduce((sum: number, yearData: any) => sum + yearData.length, 0),
+        totalYears: Object.keys(data).length,
+        totalCompanies: new Set(
+          Object.values(data)
+            .flat()
+            .map((item: any) => item.empresa),
+        ).size,
+      }
+    : null
 
-        {/* Indicador de estado de conexión */}
-        <div className="mt-4 flex justify-center">
+  return (
+    <main className="container mx-auto py-6 px-4 md:px-6">
+      {/* Header compacto */}
+      <div className="text-center mb-6">
+        <div className="flex items-center justify-center gap-3 mb-2">
+          <BarChart3 className="h-8 w-8 text-blue-600" />
+          <h1 className="text-3xl font-bold">Dashboard PAE-PAP JUNAEB</h1>
+        </div>
+
+        {quickStats && (
+          <div className="flex justify-center gap-6 text-sm text-muted-foreground mb-3">
+            <span className="flex items-center gap-1">
+              <FileText className="h-4 w-4" />
+              {quickStats.totalRecords.toLocaleString()} registros
+            </span>
+            <span className="flex items-center gap-1">
+              <TrendingUp className="h-4 w-4" />
+              {quickStats.totalYears} años
+            </span>
+            <span className="flex items-center gap-1">
+              <Database className="h-4 w-4" />
+              {quickStats.totalCompanies} empresas
+            </span>
+          </div>
+        )}
+
+        {/* Indicador de estado compacto */}
+        <div className="flex justify-center">
           {connectionStatus === "checking" && (
-            <div className="flex items-center gap-2 text-blue-600">
-              <Loader2 className="h-4 w-4 animate-spin" />
-              <span className="text-sm">Verificando conexión con GitHub...</span>
+            <div className="flex items-center gap-2 text-blue-600 text-sm">
+              <Loader2 className="h-3 w-3 animate-spin" />
+              <span>Cargando...</span>
             </div>
           )}
           {connectionStatus === "connected" && (
-            <div className="flex items-center gap-2 text-green-600">
-              <Wifi className="h-4 w-4" />
-              <span className="text-sm">Conectado a datos oficiales de GitHub</span>
+            <div className="flex items-center gap-2 text-green-600 text-sm">
+              <Wifi className="h-3 w-3" />
+              <span>Datos oficiales</span>
             </div>
           )}
           {connectionStatus === "failed" && (
-            <div className="flex items-center gap-2 text-amber-600">
-              <WifiOff className="h-4 w-4" />
-              <span className="text-sm">Usando datos de ejemplo (GitHub no disponible)</span>
+            <div className="flex items-center gap-2 text-blue-600 text-sm">
+              <Database className="h-3 w-3" />
+              <span>Datos de demostración</span>
             </div>
           )}
         </div>
+
+        {/* Botón para mostrar información */}
+        <div className="mt-3">
+          <Button variant="outline" size="sm" onClick={() => setShowInfo(!showInfo)} className="text-xs">
+            <Info className="h-3 w-3 mr-1" />
+            {showInfo ? "Ocultar información" : "¿Cómo funciona?"}
+          </Button>
+        </div>
       </div>
 
-      <YearSelector onYearSelect={handleYearSelect} isLoading={isLoading} loadedYears={sheetNames} />
+      {/* Información colapsable */}
+      <Collapsible open={showInfo} onOpenChange={setShowInfo}>
+        <CollapsibleContent className="mb-6">
+          <DataSourceInfo loadedYears={sheetNames} isUsingMockData={isUsingMockData} />
+        </CollapsibleContent>
+      </Collapsible>
 
-      {data && sheetNames.length > 0 && <DataSourceInfo loadedYears={sheetNames} isUsingMockData={isUsingMockData} />}
+      {/* Selector de año más compacto */}
+      <Card className="mb-6">
+        <CardContent className="p-4">
+          <div className="flex flex-col md:flex-row gap-4 items-start md:items-center">
+            <div className="flex-1">
+              <label className="block text-sm font-medium mb-2">Período de análisis:</label>
+              <Select value="all" onValueChange={handleYearSelect} disabled={isLoading}>
+                <SelectTrigger className="w-full md:w-[200px]">
+                  <SelectValue placeholder="Seleccionar período" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">
+                    <div className="flex items-center gap-2">
+                      <Database className="h-4 w-4" />
+                      Todos los años (2020-2023)
+                    </div>
+                  </SelectItem>
+                  {["2020", "2021", "2022", "2023"].map((year) => (
+                    <SelectItem key={year} value={year}>
+                      Año {year}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
 
+            {sheetNames.length > 0 && (
+              <div className="flex gap-2 flex-wrap">
+                {sheetNames.map((year) => (
+                  <div
+                    key={year}
+                    className="flex items-center gap-1 text-xs bg-green-100 text-green-800 px-2 py-1 rounded"
+                  >
+                    <span>{year}</span>
+                    <span className="font-medium">{data[year]?.length.toLocaleString() || 0} registros</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Error más compacto */}
       {error && (
         <Alert variant="destructive" className="mb-6">
           <AlertCircle className="h-4 w-4" />
           <AlertDescription>
-            <div className="space-y-2">
-              <p>
-                <strong>Error de conexión:</strong> {error}
-              </p>
-              <p className="text-sm">No se pudieron cargar los datos desde GitHub. Posibles causas:</p>
-              <ul className="text-sm list-disc list-inside ml-4">
-                <li>Problemas de conectividad a internet</li>
-                <li>Restricciones de CORS del navegador</li>
-                <li>Archivos temporalmente no disponibles en GitHub</li>
-                <li>Rate limiting de GitHub</li>
-              </ul>
-              <p className="text-sm font-medium">
-                ✅ La aplicación continúa funcionando con datos de ejemplo realistas para demostrar todas las
-                funcionalidades.
-              </p>
-            </div>
+            <p className="font-medium">Error de conexión</p>
+            <p className="text-sm">Usando datos de demostración. La funcionalidad completa está disponible.</p>
           </AlertDescription>
         </Alert>
       )}
 
+      {/* Loading más elegante */}
       {isLoading && (
         <Card className="mb-6">
-          <CardContent className="p-6 flex flex-col items-center justify-center">
-            <Loader2 className="h-8 w-8 animate-spin mb-2" />
-            <p className="text-center font-medium">Cargando datos de JUNAEB...</p>
-            <p className="text-sm text-muted-foreground mt-1">Intentando conectar con GitHub...</p>
-            <div className="mt-2 text-xs text-muted-foreground">
-              <p>• Verificando URLs alternativas</p>
-              <p>• Aplicando timeout de 10 segundos</p>
-              <p>• Preparando fallback si es necesario</p>
+          <CardContent className="p-6 flex items-center justify-center gap-3">
+            <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
+            <div>
+              <p className="font-medium">Cargando datos de JUNAEB...</p>
+              <p className="text-sm text-muted-foreground">Preparando análisis</p>
             </div>
           </CardContent>
         </Card>
       )}
 
+      {/* Contenido principal */}
       {data && sheetNames.length > 0 && (
         <Tabs defaultValue="overview" className="space-y-6">
           <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="overview" className="flex items-center gap-2">
-              <Database className="h-4 w-4" />
-              Resumen
+              <BarChart3 className="h-4 w-4" />
+              <span className="hidden sm:inline">Resumen</span>
             </TabsTrigger>
             <TabsTrigger value="temporal" className="flex items-center gap-2">
               <TrendingUp className="h-4 w-4" />
-              Análisis Temporal
+              <span className="hidden sm:inline">Temporal</span>
             </TabsTrigger>
-            <TabsTrigger value="detailed">Análisis Detallado</TabsTrigger>
-            <TabsTrigger value="individual">Por Año</TabsTrigger>
+            <TabsTrigger value="detailed" className="flex items-center gap-2">
+              <PieChart className="h-4 w-4" />
+              <span className="hidden sm:inline">Detallado</span>
+            </TabsTrigger>
+            <TabsTrigger value="individual" className="flex items-center gap-2">
+              <FileText className="h-4 w-4" />
+              <span className="hidden sm:inline">Por Año</span>
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="overview" className="space-y-6">
@@ -163,14 +244,12 @@ export default function Home() {
 
           <TabsContent value="detailed" className="space-y-6">
             <Card>
-              <CardHeader>
+              <CardHeader className="pb-4">
                 <CardTitle className="flex items-center gap-2">
-                  <Database className="h-5 w-5" />
-                  Análisis Consolidado - Período 2020-2023
+                  <PieChart className="h-5 w-5" />
+                  Análisis Consolidado 2020-2023
                 </CardTitle>
-                <CardDescription>
-                  Vista unificada de {isUsingMockData ? "datos de ejemplo" : "datos oficiales"} de JUNAEB
-                </CardDescription>
+                <CardDescription>Vista unificada con gráficos interactivos y análisis detallado</CardDescription>
               </CardHeader>
             </Card>
 
@@ -186,7 +265,12 @@ export default function Home() {
                 <SelectContent>
                   {sheetNames.map((sheet) => (
                     <SelectItem key={sheet} value={sheet}>
-                      Año {sheet}
+                      <div className="flex items-center justify-between w-full">
+                        <span>Año {sheet}</span>
+                        <span className="text-xs text-muted-foreground ml-2">
+                          {data[sheet]?.length.toLocaleString()} registros
+                        </span>
+                      </div>
                     </SelectItem>
                   ))}
                 </SelectContent>
