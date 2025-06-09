@@ -11,6 +11,7 @@ import SheetOverview from "@/components/sheet-overview"
 import ExecutiveSummary from "@/components/executive-summary"
 import YearSelector from "@/components/year-selector"
 import TemporalAnalysis from "@/components/temporal-analysis"
+import DataSourceInfo from "@/components/data-source-info"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
 export default function Home() {
@@ -19,6 +20,7 @@ export default function Home() {
   const [data, setData] = useState<any>(null)
   const [activeSheet, setActiveSheet] = useState<string>("")
   const [sheetNames, setSheetNames] = useState<string[]>([])
+  const [isUsingMockData, setIsUsingMockData] = useState(false)
 
   // Cargar todos los años al iniciar
   useEffect(() => {
@@ -28,6 +30,7 @@ export default function Home() {
   const handleYearSelect = async (year: string) => {
     setIsLoading(true)
     setError(null)
+    setIsUsingMockData(false)
 
     try {
       console.log("Cargando datos para:", year === "all" ? "todos los años" : year)
@@ -35,6 +38,13 @@ export default function Home() {
       setData(result.data)
       setSheetNames(result.sheetNames)
       setActiveSheet(result.sheetNames[0])
+
+      // Detectar si estamos usando datos de ejemplo
+      const firstYearData = result.data[result.sheetNames[0]]
+      if (firstYearData && firstYearData.length > 0 && firstYearData[0].id?.includes("-")) {
+        setIsUsingMockData(true)
+      }
+
       setIsLoading(false)
     } catch (err) {
       console.error("Error al cargar datos:", err)
@@ -52,6 +62,8 @@ export default function Home() {
 
       <YearSelector onYearSelect={handleYearSelect} isLoading={isLoading} loadedYears={sheetNames} />
 
+      {data && sheetNames.length > 0 && <DataSourceInfo loadedYears={sheetNames} isUsingMockData={isUsingMockData} />}
+
       {error && (
         <Alert variant="destructive" className="mb-6">
           <AlertCircle className="h-4 w-4" />
@@ -60,7 +72,15 @@ export default function Home() {
               <p>
                 <strong>Error:</strong> {error}
               </p>
-              <p className="text-sm">Verifica que los archivos JSON estén disponibles en el repositorio de GitHub.</p>
+              <p className="text-sm">
+                <strong>Posibles soluciones:</strong>
+              </p>
+              <ul className="text-sm list-disc list-inside space-y-1">
+                <li>Verifica que los archivos JSON estén en la carpeta /csv/ del repositorio</li>
+                <li>Asegúrate de que los archivos tengan nombres como: 2021.json, 2022.json, etc.</li>
+                <li>Comprueba que el repositorio sea público</li>
+                <li>La aplicación usará datos de ejemplo si no puede cargar los archivos reales</li>
+              </ul>
             </div>
           </AlertDescription>
         </Alert>
@@ -71,7 +91,7 @@ export default function Home() {
           <CardContent className="p-6 flex flex-col items-center justify-center">
             <Loader2 className="h-8 w-8 animate-spin mb-2" />
             <p className="text-center">Cargando datos desde GitHub...</p>
-            <p className="text-sm text-muted-foreground mt-1">Procesando archivos JSON por año</p>
+            <p className="text-sm text-muted-foreground mt-1">Buscando archivos JSON disponibles...</p>
           </CardContent>
         </Card>
       )}
@@ -95,7 +115,6 @@ export default function Home() {
           </TabsContent>
 
           <TabsContent value="detailed" className="space-y-6">
-            {/* Análisis consolidado de todos los años */}
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -106,7 +125,6 @@ export default function Home() {
               </CardHeader>
             </Card>
 
-            {/* Combinar todos los datos para análisis consolidado */}
             <Dashboard data={Object.values(data).flat()} sheetName="Consolidado" />
           </TabsContent>
 
