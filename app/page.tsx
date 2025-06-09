@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Loader2, AlertCircle, Database } from "lucide-react"
+import { Loader2, AlertCircle, Database, TrendingUp } from "lucide-react"
 import Dashboard from "@/components/dashboard"
 import { loadJSONData } from "@/lib/json-processor"
 import SheetOverview from "@/components/sheet-overview"
@@ -39,7 +39,7 @@ export default function Home() {
       setSheetNames(result.sheetNames)
       setActiveSheet(result.sheetNames[0])
 
-      // Detectar si estamos usando datos de ejemplo
+      // Los datos reales no tendrán el campo 'id' que tienen los datos de ejemplo
       const firstYearData = result.data[result.sheetNames[0]]
       if (firstYearData && firstYearData.length > 0 && firstYearData[0].id?.includes("-")) {
         setIsUsingMockData(true)
@@ -57,7 +57,9 @@ export default function Home() {
     <main className="container mx-auto py-10 px-4 md:px-6">
       <div className="text-center mb-8">
         <h1 className="text-4xl font-bold mb-4">Dashboard de Análisis de Deudas PAE-PAP</h1>
-        <p className="text-lg text-muted-foreground">Análisis interactivo de multas JUNAEB por año</p>
+        <p className="text-lg text-muted-foreground">
+          Análisis interactivo de multas JUNAEB • Datos oficiales 2020-2023
+        </p>
       </div>
 
       <YearSelector onYearSelect={handleYearSelect} isLoading={isLoading} loadedYears={sheetNames} />
@@ -76,10 +78,10 @@ export default function Home() {
                 <strong>Posibles soluciones:</strong>
               </p>
               <ul className="text-sm list-disc list-inside space-y-1">
-                <li>Verifica que los archivos JSON estén en la carpeta /csv/ del repositorio</li>
-                <li>Asegúrate de que los archivos tengan nombres como: 2021.json, 2022.json, etc.</li>
-                <li>Comprueba que el repositorio sea público</li>
-                <li>La aplicación usará datos de ejemplo si no puede cargar los archivos reales</li>
+                <li>Verifica tu conexión a internet</li>
+                <li>Los archivos JSON deben estar disponibles públicamente en GitHub</li>
+                <li>Intenta recargar la página</li>
+                <li>Revisa la consola del navegador para más detalles</li>
               </ul>
             </div>
           </AlertDescription>
@@ -90,8 +92,10 @@ export default function Home() {
         <Card className="mb-6">
           <CardContent className="p-6 flex flex-col items-center justify-center">
             <Loader2 className="h-8 w-8 animate-spin mb-2" />
-            <p className="text-center">Cargando datos desde GitHub...</p>
-            <p className="text-sm text-muted-foreground mt-1">Buscando archivos JSON disponibles...</p>
+            <p className="text-center font-medium">Cargando datos oficiales de JUNAEB...</p>
+            <p className="text-sm text-muted-foreground mt-1">
+              Procesando archivos JSON desde el repositorio de GitHub
+            </p>
           </CardContent>
         </Card>
       )}
@@ -99,8 +103,14 @@ export default function Home() {
       {data && sheetNames.length > 0 && (
         <Tabs defaultValue="overview" className="space-y-6">
           <TabsList className="grid w-full grid-cols-4">
-            <TabsTrigger value="overview">Resumen</TabsTrigger>
-            <TabsTrigger value="temporal">Análisis Temporal</TabsTrigger>
+            <TabsTrigger value="overview" className="flex items-center gap-2">
+              <Database className="h-4 w-4" />
+              Resumen
+            </TabsTrigger>
+            <TabsTrigger value="temporal" className="flex items-center gap-2">
+              <TrendingUp className="h-4 w-4" />
+              Análisis Temporal
+            </TabsTrigger>
             <TabsTrigger value="detailed">Análisis Detallado</TabsTrigger>
             <TabsTrigger value="individual">Por Año</TabsTrigger>
           </TabsList>
@@ -119,13 +129,13 @@ export default function Home() {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Database className="h-5 w-5" />
-                  Análisis Consolidado - Todos los Años
+                  Análisis Consolidado - Período 2020-2023
                 </CardTitle>
-                <CardDescription>Vista unificada de todos los datos disponibles</CardDescription>
+                <CardDescription>Vista unificada de todos los datos oficiales de JUNAEB</CardDescription>
               </CardHeader>
             </Card>
 
-            <Dashboard data={Object.values(data).flat()} sheetName="Consolidado" />
+            <Dashboard data={Object.values(data).flat()} sheetName="Consolidado (2020-2023)" />
           </TabsContent>
 
           <TabsContent value="individual" className="space-y-6">
@@ -144,7 +154,7 @@ export default function Home() {
               </Select>
             </div>
 
-            <Dashboard data={data[activeSheet]} sheetName={activeSheet} />
+            <Dashboard data={data[activeSheet]} sheetName={`Año ${activeSheet}`} />
           </TabsContent>
         </Tabs>
       )}

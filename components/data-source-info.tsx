@@ -3,7 +3,8 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Info, ExternalLink } from "lucide-react"
+import { Info, ExternalLink, CheckCircle } from "lucide-react"
+import { getDataSourceInfo } from "@/lib/json-processor"
 
 interface DataSourceInfoProps {
   loadedYears: string[]
@@ -11,12 +12,14 @@ interface DataSourceInfoProps {
 }
 
 export default function DataSourceInfo({ loadedYears, isUsingMockData = false }: DataSourceInfoProps) {
+  const sourceInfo = getDataSourceInfo()
+
   return (
     <Card className="mb-6">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <Info className="h-5 w-5" />
-          Información de la Fuente de Datos
+          <CheckCircle className="h-5 w-5 text-green-600" />
+          Datos Reales de JUNAEB Cargados
         </CardTitle>
       </CardHeader>
       <CardContent>
@@ -29,20 +32,27 @@ export default function DataSourceInfo({ loadedYears, isUsingMockData = false }:
                   <strong>Usando datos de ejemplo:</strong> No se pudieron cargar los archivos JSON desde GitHub.
                 </p>
                 <p className="text-sm">
-                  Para usar datos reales, asegúrate de que los archivos JSON estén disponibles en:
+                  Para usar datos reales, verifica que los archivos estén disponibles en el repositorio.
                 </p>
-                <code className="text-xs bg-muted p-1 rounded">
-                  https://github.com/CortaNoticias/EXCEL-DASH/tree/main/csv/
-                </code>
               </div>
             </AlertDescription>
           </Alert>
         ) : (
           <div className="space-y-4">
+            <div className="bg-green-50 p-4 rounded-lg border border-green-200">
+              <div className="flex items-center gap-2 mb-2">
+                <CheckCircle className="h-4 w-4 text-green-600" />
+                <span className="font-medium text-green-800">Datos oficiales cargados exitosamente</span>
+              </div>
+              <p className="text-sm text-green-700">
+                Se han cargado los datos reales de multas JUNAEB desde el repositorio oficial.
+              </p>
+            </div>
+
             <div>
-              <p className="text-sm text-muted-foreground mb-2">Datos cargados desde el repositorio de GitHub:</p>
+              <p className="text-sm text-muted-foreground mb-2">Fuente de datos:</p>
               <a
-                href="https://github.com/CortaNoticias/EXCEL-DASH/tree/main/csv"
+                href={sourceInfo.baseUrl}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-1 text-blue-600 hover:text-blue-800 text-sm"
@@ -53,18 +63,43 @@ export default function DataSourceInfo({ loadedYears, isUsingMockData = false }:
             </div>
 
             <div>
-              <p className="text-sm font-medium mb-2">Años disponibles:</p>
+              <p className="text-sm font-medium mb-2">
+                Años disponibles ({loadedYears.length} de {sourceInfo.totalYears}):
+              </p>
               <div className="flex gap-2 flex-wrap">
-                {loadedYears.map((year) => (
-                  <Badge key={year} variant="secondary">
-                    {year}
-                  </Badge>
-                ))}
+                {sourceInfo.files.map((file) => {
+                  const isLoaded = loadedYears.includes(file.year)
+                  return (
+                    <Badge key={file.year} variant={isLoaded ? "default" : "secondary"}>
+                      {file.year} {isLoaded && "✓"}
+                    </Badge>
+                  )
+                })}
               </div>
             </div>
 
-            <div className="text-xs text-muted-foreground">
-              <p>Los datos se actualizan automáticamente desde los archivos JSON en el repositorio.</p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs text-muted-foreground">
+              <div>
+                <p className="font-medium mb-1">Archivos procesados:</p>
+                <ul className="space-y-1">
+                  {sourceInfo.files
+                    .filter((file) => loadedYears.includes(file.year))
+                    .map((file) => (
+                      <li key={file.year} className="truncate">
+                        • {file.filename}
+                      </li>
+                    ))}
+                </ul>
+              </div>
+              <div>
+                <p className="font-medium mb-1">Información técnica:</p>
+                <ul className="space-y-1">
+                  <li>• Formato: JSON</li>
+                  <li>• Actualización: Automática</li>
+                  <li>• Fuente: Repositorio GitHub</li>
+                  <li>• Período: 2020-2023</li>
+                </ul>
+              </div>
             </div>
           </div>
         )}

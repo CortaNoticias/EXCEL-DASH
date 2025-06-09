@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
-import { Calendar, Download } from "lucide-react"
+import { Calendar, Download, Database } from "lucide-react"
 import { getAvailableYears } from "@/lib/json-processor"
 
 interface YearSelectorProps {
@@ -40,10 +40,15 @@ export default function YearSelector({ onYearSelect, isLoading, loadedYears }: Y
                 <SelectValue placeholder="Seleccionar año" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Todos los años</SelectItem>
+                <SelectItem value="all">
+                  <div className="flex items-center gap-2">
+                    <Database className="h-4 w-4" />
+                    Todos los años (2020-2023)
+                  </div>
+                </SelectItem>
                 {availableYears.map((year) => (
                   <SelectItem key={year} value={year}>
-                    {year}
+                    Año {year}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -60,14 +65,22 @@ export default function YearSelector({ onYearSelect, isLoading, loadedYears }: Y
 
         {loadedYears.length > 0 && (
           <div className="mt-4">
-            <p className="text-sm text-muted-foreground mb-2">Años cargados:</p>
+            <p className="text-sm text-muted-foreground mb-2">
+              Años cargados ({loadedYears.length} de {availableYears.length}):
+            </p>
             <div className="flex gap-2 flex-wrap">
               {loadedYears.map((year) => (
-                <Badge key={year} variant="secondary">
-                  {year}
+                <Badge key={year} variant="default" className="bg-green-600">
+                  {year} ✓
                 </Badge>
               ))}
             </div>
+          </div>
+        )}
+
+        {isLoading && (
+          <div className="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
+            <p className="text-sm text-blue-800">Cargando datos oficiales de JUNAEB desde GitHub...</p>
           </div>
         )}
       </CardContent>
