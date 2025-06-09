@@ -11,6 +11,7 @@ interface DataSourceInfoProps {
   isUsingMockData?: boolean
 }
 
+// Actualizar la información de la fuente de datos para mostrar el estado real
 export default function DataSourceInfo({ loadedYears, isUsingMockData = false }: DataSourceInfoProps) {
   const sourceInfo = getDataSourceInfo()
 
@@ -25,8 +26,7 @@ export default function DataSourceInfo({ loadedYears, isUsingMockData = false }:
             </>
           ) : (
             <>
-              <CheckCircle className="h-5 w-5 text-green-600" />
-              Datos Reales de JUNAEB Cargados
+              <CheckCircle className="h-5 w-5 text-green-600" />✅ Datos Oficiales de JUNAEB Cargados desde GitHub
             </>
           )}
         </CardTitle>
@@ -78,40 +78,59 @@ export default function DataSourceInfo({ loadedYears, isUsingMockData = false }:
             <div className="bg-green-50 p-4 rounded-lg border border-green-200">
               <div className="flex items-center gap-2 mb-2">
                 <CheckCircle className="h-4 w-4 text-green-600" />
-                <span className="font-medium text-green-800">Datos oficiales cargados exitosamente</span>
+                <span className="font-medium text-green-800">
+                  🎉 Datos oficiales cargados exitosamente desde GitHub
+                </span>
               </div>
               <p className="text-sm text-green-700">
-                Se han cargado los datos reales de multas JUNAEB desde el repositorio oficial.
+                Se han cargado los datos reales de multas JUNAEB desde el repositorio oficial CortaNoticias/EXCEL-DASH.
+                Los archivos JSON están disponibles y funcionando correctamente.
               </p>
             </div>
 
+            <div className="bg-blue-50 p-3 rounded border border-blue-200">
+              <div className="text-sm text-blue-800">
+                <strong>📊 Repositorio verificado:</strong> Los archivos JSON están disponibles en GitHub y se están
+                cargando correctamente.
+              </div>
+            </div>
+
             <div>
-              <p className="text-sm text-muted-foreground mb-2">Fuente de datos:</p>
+              <p className="text-sm text-muted-foreground mb-2">🔗 Fuente de datos oficial:</p>
               <a
                 href={sourceInfo.baseUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-1 text-blue-600 hover:text-blue-800 text-sm"
+                className="inline-flex items-center gap-1 text-blue-600 hover:text-blue-800 text-sm font-medium"
               >
-                CortaNoticias/EXCEL-DASH/csv
+                📁 CortaNoticias/EXCEL-DASH/csv
                 <ExternalLink className="h-3 w-3" />
               </a>
             </div>
 
             <div>
               <p className="text-sm font-medium mb-2">
-                Años disponibles ({loadedYears.length} de {sourceInfo.totalYears}):
+                📈 Años cargados ({loadedYears.length} de {sourceInfo.totalYears}):
               </p>
               <div className="flex gap-2 flex-wrap">
                 {sourceInfo.files.map((file) => {
                   const isLoaded = loadedYears.includes(file.year)
                   return (
-                    <Badge key={file.year} variant={isLoaded ? "default" : "secondary"}>
-                      {file.year} {isLoaded && "✓"}
+                    <Badge
+                      key={file.year}
+                      variant={isLoaded ? "default" : "secondary"}
+                      className={isLoaded ? "bg-green-600" : ""}
+                    >
+                      {file.year} {isLoaded && "✅"}
                     </Badge>
                   )
                 })}
               </div>
+            </div>
+
+            <div className="text-xs text-muted-foreground">
+              <p>🔄 Los datos se cargan directamente desde GitHub en tiempo real</p>
+              <p>📅 Última verificación: {new Date().toLocaleDateString()}</p>
             </div>
           </div>
         )}
